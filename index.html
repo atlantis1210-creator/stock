@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1F3864">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>:root{color-scheme:light dark}html{padding-top:env(safe-area-inset-top,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>أعمار المخزون والربحية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@400;600&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* Layout: sticky filter bar on top, one report per bottom tab, cards stacked in a single column that widens to a 760px reading column on desktop. */
+:root{
+  --bg:#F1F4F9; --surface:#FFFFFF; --ink:#13203B; --muted:#586279; --line:#D8DEEA;
+  --accent:#1F3864; --accent-soft:#E3EAF7; --good:#1E7A46; --warn:#A66A00; --bad:#C0392B;
+  --c1:#1E7A46; --c2:#2F5597; --c3:#0E7C86; --c4:#A66A00; --c5:#C0392B; --c6:#7A4FB5; --c7:#6B7385;
+  --font-body:"IBM Plex Sans Arabic","Segoe UI",Tahoma,sans-serif;
+  --font-num:"Readex Pro","IBM Plex Sans Arabic","Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1422; --surface:#151E31; --ink:#E6EBF5; --muted:#97A3BA; --line:#27334D;
+  --accent:#8FB1EE; --accent-soft:#1C2A47; --good:#5CCB8A; --warn:#E5B04A; --bad:#F28B80;
+  --c1:#5CCB8A; --c2:#86AEF0; --c3:#5CCBD3; --c4:#E5B04A; --c5:#F28B80; --c6:#BFA1F0; --c7:#98A2B8; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1422; --surface:#151E31; --ink:#E6EBF5; --muted:#97A3BA; --line:#27334D;
+  --accent:#8FB1EE; --accent-soft:#1C2A47; --good:#5CCB8A; --warn:#E5B04A; --bad:#F28B80;
+  --c1:#5CCB8A; --c2:#86AEF0; --c3:#5CCBD3; --c4:#E5B04A; --c5:#F28B80; --c6:#BFA1F0; --c7:#98A2B8; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.6;padding-inline:16px;padding-block:0 92px}
+*{box-sizing:border-box}
+.wrap{max-width:760px;margin-inline:auto}
+.n{direction:ltr;unicode-bidi:isolate;display:inline-block;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
+.neg{color:var(--bad)} .pos{color:var(--good)}
+h2{font-family:var(--font-num);font-size:15px;font-weight:600;margin:0 0 10px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px 8px;border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand b{font-family:var(--font-num);font-size:16px;color:var(--accent)} .brand span{display:block;font-size:12px;color:var(--muted)}
+select,input[type=date],input[type=number],input[type=text],input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:38px;max-width:100%}
+select:focus-visible,input:focus-visible,button:focus-visible,label:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.stack{display:flex;flex-direction:column;gap:14px;padding-block:14px}.stack>.kpis{margin-block:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.kpi small{display:block;color:var(--muted);font-size:12px} .kpi b{font-family:var(--font-num);font-size:20px;font-weight:600;display:block;overflow-wrap:anywhere}
+.kpis.three{grid-template-columns:repeat(3,minmax(0,1fr))} .kpis.three .kpi{padding:10px} .kpis.three .kpi b{font-size:16px} .kpis.three .kpi i{display:block}
+.kpi.big{grid-column:1/-1;background:var(--accent);border-color:var(--accent)} .kpi.big small,.kpi.big b{color:var(--surface)}
+.kpi i{font-style:normal;font-size:12px;color:var(--muted)} .kpi.big i{color:var(--surface);opacity:.85}
+.seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.seg button,.btn{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 14px;min-height:36px;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--surface);border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--surface);border-color:var(--accent);border-radius:10px;padding:9px 16px}
+.btn.danger{color:var(--bad);border-color:var(--bad);border-radius:10px}
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:13px}
+.bar .t{height:9px;border-radius:5px;background:var(--accent-soft);grid-column:1/-1;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:5px;background:var(--c)}
+.bar small{color:var(--muted)}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:start;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--accent-soft);color:var(--ink);font-weight:600;font-size:12px}
+tr:last-child td{border-bottom:0} tfoot td{font-weight:600;background:var(--accent-soft)}
+td.num,th.num{text-align:end}
+.is td:first-child,.is th:first-child{position:sticky;inset-inline-start:0;background:var(--surface);z-index:1;font-weight:500}
+.is tr.tot td{font-weight:600;background:var(--accent-soft)} .is tr.big td{font-size:14px} .is tr.sm td{font-size:11.5px;color:var(--muted)}
+.is tr.hd td{background:var(--bg);font-weight:600;color:var(--accent)} .is thead th:first-child{background:var(--accent-soft)}
+.is tr.tot td:first-child{background:var(--accent-soft)} .is tr.hd td:first-child{background:var(--bg)}
+.item{border:1px solid var(--line);border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.item h3{margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.item .meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.item .st{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;font-size:12.5px}
+.item .st>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px dotted var(--line);min-width:0}
+.item .st span{color:var(--muted);white-space:nowrap} .item .st b{font-weight:600;font-size:13px;color:var(--ink);white-space:nowrap;text-align:end}
+.item .dec{font-size:12.5px;border-top:1px dashed var(--line);padding-top:6px}
+.list{display:flex;flex-direction:column;gap:10px}
+.chip{display:inline-block;font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:999px;color:var(--c);background:color-mix(in srgb,var(--c) 15%,transparent);border:1px solid color-mix(in srgb,var(--c) 40%,transparent);white-space:nowrap}
+.chipbtn{font:inherit;cursor:pointer;text-align:start;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:flex;flex-direction:column;gap:1px;min-width:0}
+.chipbtn[aria-pressed=true]{border-color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--surface))}
+.chipbtn b{color:var(--c);font-size:12.5px;font-weight:600} .chipbtn small{color:var(--muted);font-size:11.5px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.note{font-size:12.5px;color:var(--muted)} .banner{background:color-mix(in srgb,var(--warn) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);border-radius:10px;padding:10px 12px;font-size:13px}
+.warn li{margin-bottom:3px} .empty{text-align:center;color:var(--muted);padding:26px 8px}
+.chart{width:100%;height:auto;display:block} .chart text{fill:var(--muted);font-size:10px;font-family:var(--font-num)}
+.tabs{position:fixed;inset-inline:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+.tabs div{display:flex;width:100%;max-width:760px;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tabs button{flex:1 0 auto;min-width:64px;padding-inline:8px!important;white-space:nowrap;font:inherit;font-size:12px;border:0;background:none;color:var(--muted);padding:6px 2px;border-radius:10px;min-height:48px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.dtitle{background:#92D050;color:#111;font-weight:700;font-size:16px;text-align:center;padding:9px;border:2px solid #333;border-radius:4px}
+.dbr{background:#FFFF00;color:#111;font-weight:700;font-size:16px;text-align:center;padding:7px;border:2px solid #333;border-radius:4px}
+.dt{width:100%;border-collapse:collapse;font-size:13px} .dt th{background:#92D050;color:#111;border:1px solid #444;padding:6px 8px;font-weight:700;text-align:center}
+.dt td{border:1px solid var(--line);padding:5px 8px;white-space:normal;overflow-wrap:anywhere} .dt td.num{white-space:nowrap}
+.dt tr.pay td{background:#FFC000;color:#111} .ct tr.clk{cursor:pointer} .ct tr.clk:hover td{background:var(--accent-soft)}
+.dt tr.memo td{color:var(--muted);font-style:italic} .dt tr.fin td{background:#F4B183;color:#111;font-weight:700} .dt tr.sum td{font-weight:700;background:var(--accent-soft)}
+.cmpv{display:grid;grid-template-columns:1fr 1fr;gap:10px} .dd{display:flex;align-items:center;gap:8px;justify-content:center}
+.ct{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+.ct th{background:var(--accent);color:var(--surface);font-weight:600;padding:8px 10px;text-align:center;white-space:nowrap;border-bottom:1px solid color-mix(in srgb,var(--surface) 25%,transparent)}
+.ct thead tr.s th{background:var(--accent-soft);color:var(--ink);font-weight:500;font-size:11.5px;border-bottom:1px solid var(--line)}
+.ct td{padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+.ct tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface))}
+.ct tfoot td{font-weight:700;background:var(--accent-soft);border-top:2px solid var(--accent);border-bottom:0}
+.ct td:first-child,.ct thead tr.g th:first-child{position:sticky;inset-inline-start:0;z-index:1}
+.ct td:first-child{font-weight:500;box-shadow:-1px 0 0 var(--line)}
+.ct .gs{border-inline-start:1px solid var(--line)} .ct td.mu{color:var(--muted);font-size:12px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-inline-end:7px;vertical-align:baseline}
+.mb{display:block;height:6px;border-radius:3px;margin:3px 0;background:var(--line);overflow:hidden} .mb i{display:block;height:100%;border-radius:3px}
+.pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)} .pill.good{color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)} .pill.flat{color:var(--muted);background:var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin:10px 0 6px} .legend span{display:inline-flex;align-items:center;gap:6px} .mb2{display:inline-block;width:18px;height:6px;border-radius:3px}
+@media print{.tabs,header.top,.noprint{display:none!important}}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-current=page]{color:var(--accent);background:var(--accent-soft);font-weight:600}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.file{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;display:block;cursor:pointer}
+.file input{display:none}
+@media (prefers-reduced-motion:no-preference){.bar .t i{transition:width .3s}}
+</style>
+
+<div id="root"></div>
+
+<script>
+document.documentElement.setAttribute('dir','rtl');document.documentElement.setAttribute('lang','ar');
+
+/* ---------- constants ---------- */
+const MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const CLS=['نجم — ربح مرتفع','أساسي — حجم عالٍ وهامش أقل','هامش جيد — حجم محدود','ربحية محدودة','خاسر','راكد بلا مبيعات','لا حركة'];
+const CLS_DEC=['ركّز: وفّر المخزون دائماً، حافظ على السعر، ولا تدخله في أي تصفية.','حافظ عليه وحسّن الهامش: فاوض المورد على التكلفة أو راجع التسعير.','ادفع المبيعات: ترويج، عرض في الواجهة، تدريب فريق البيع عليه.','راقب وقلّل كميات الشراء أو استبدله بصنف أفضل.','راجع السعر فوراً أو أوقف الشراء — يبيع بأقل من التكلفة.','صرّفه بعرض/تخفيض، أو حوّله لفرع يبيعه، أو أرجعه للمورد.','لا إجراء.'];
+const GROUPS=['عادي','مشروعات','أمانات'];
+const RISK=['صحي','بداية الخطر','خطر'];
+const RISK_DEC={'صحي':['متابعة طبيعية','متابعة التسليم للمشروع','متابعة'],'بداية الخطر':['ترويج / عرض خاص','التأكد من موعد التسليم','مراجعة المورد للاسترجاع'],'خطر':['تخفيض سعر / تصفية / تحويل لفرع آخر','مراجعة وإعادة تخصيص أو إرجاع','إرجاع للمورد']};
+const RISK_COLOR={'صحي':'var(--c1)','بداية الخطر':'var(--c4)','خطر':'var(--c5)'};
+const OPN={1:'رصيد أول المدة',2:'مبيعات',3:'مردودات مبيعات',4:'مشتريات',5:'مردودات مشتريات',6:'استلام من فرع',7:'صرف لفرع',8:'إيرادات أخرى'};
+const KEY='amr-riba-v1';
+
+/* ---------- dates (Excel serial day numbers) ---------- */
+const EPOCH=Date.UTC(1899,11,30);
+const toSerial=iso=>iso?Math.round((Date.UTC(+iso.slice(0,4),+iso.slice(5,7)-1,+iso.slice(8,10))-EPOCH)/864e5):null;
+const toISO=s=>s==null?'':new Date(EPOCH+s*864e5).toISOString().slice(0,10);
+const ymd=s=>{const d=new Date(EPOCH+s*864e5);return[d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate()]};
+const todaySerial=()=>{const d=new Date();return Math.round((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-EPOCH)/864e5)};
+function parseDate(v){
+  if(v==null||v==='')return null;
+  if(typeof v==='number')return v>20000?Math.floor(v):null;
+  if(v instanceof Date)return Math.round((Date.UTC(v.getFullYear(),v.getMonth(),v.getDate())-EPOCH)/864e5);
+  const s=String(v).trim();let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(m)return toSerial(`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if(m)return toSerial(`${m[3]}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`);
+  return null;
+}
+
+/* ---------- formatting ---------- */
+const nf0=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}),nf2=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const F=(x,d=0)=>x==null||isNaN(x)?'-':(d?nf2:nf0).format(Math.abs(x)<0.5&&!d?0:x);
+const N=(x,d=0,sign)=>`<span class="n${sign&&x<0?' neg':''}${sign&&x>0?' pos':''}">${F(x,d)}</span>`;
+const PC=(x,sign)=>`<span class="n${sign&&x<0?' neg':''}">${x==null||isNaN(x)?'-':(x*100).toFixed(1)+'%'}</span>`;
+const D=s=>`<span class="n">${toISO(s)}</span>`;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- text helpers ---------- */
+const normTxt=s=>String(s??'').replace(/[\s.‏‎]/g,'').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').toLowerCase();
+function opType(s){
+  const n=normTxt(s);if(!n)return null;
+  if(n.startsWith('رصيد'))return 1;if(n.includes('ايراد'))return 8;if(n.includes('استلام'))return 6;
+  if(n.includes('تحويل')||n.includes('صرف'))return 7;
+  const ret=n.includes('مردود')||n.startsWith('مم');
+  if(n.includes('مبيعات'))return ret?3:2;if(n.includes('مشتريات'))return ret?5:4;return 0;
+}
+
+/* ---------- state ---------- */
+const yr0=ymd(todaySerial())[0];
+const DEF={rep:todaySerial(),from:toSerial(yr0+'-01-01'),to:null,open:toSerial(yr0+'-01-01'),b1:30,b2:60,b3:90,hi:25,lo:10,A:80,B:95,years:'2021,2023,2024,2025,2026',year:null};
+const SAMPLE_CODES={21718:'ACC NB . Adapter',125:'ACC NB . Adapter',25022:'ACC . Adapter Cable',26986:'ACC PC - HeadPhone',25272:'ACC PC - Convuert',1308:'Monitor - استيراد',1230:'Power Supply  استيراد',70092:'غير مصنف',24142:'غير مصنف',60013:'غير مصنف'};
+const SHARED='مشترك',EXP_GROUPS=['رواتب وأجور','إيجارات','كهرباء ومياه واتصالات','شحن ونقل','تسويق وإعلان','عمولات ومصروفات بنكية','صيانة','مصروفات إدارية وعمومية','إهلاك','مصروفات أخرى'];
+const isShared=b=>{const n=normTxt(b);return !n||['مشترك','عام','الكل','اداره','الاداره','الاداره العامه','المركز الرئيسي','المركزالرئيسي'].includes(n)};
+function sampleExp(){const o=[];for(let m=1;m<=9;m++){const d=toSerial(`2026-${String(m).padStart(2,'0')}-05`);o.push([d,'مدينة نصر','إيجار الفرع','إيجارات',60,''],[d,'مدينة نصر','مرتبات الفرع','رواتب وأجور',90,''],[d,SHARED,'مصروفات الإدارة','مصروفات إدارية وعمومية',30,'']);}return o}
+const SAMPLE_GROUPS={'ITS Center حلوان':'أمانات','شركة ماج تريد':'أمانات'};
+const sampleRows=()=>[
+ ['مدينة نصر','رصيد 2026','Down Town',0,'2017-06-14',25022,'ACC Adapter Cable Apple Magnatic',1,100],
+ ['مدينة نصر','رصيد 2026','سمارتك',0,'2017-12-31',25272,'ACC. Connector HDMI to Mini',1,4.41],
+ ['مدينة نصر','رصيد 2026','لاب كلينك',0,'2019-05-30',21718,'ACC Acer Adapter 19V-3.42A',1,70],
+ ['مدينة نصر','رصيد 2026','مورد عام 223',0,'2020-08-28',1230,'Power Supply 500W used',1,300],
+ ['مدينة نصر','رصيد 2026','جيجا ماكس _ مدينة نصر',0,'2021-04-15',26986,'ACC Standard Smart Headphone GM-3501',2,150],
+ ['مدينة نصر','مبيعات','عميل مبيعات الصيانة223',1,'2026-01-03',25272,'ACC. Connector HDMI to Mini',1,15],
+ ['مدينة نصر','مبيعات','عميل مبيعات الصيانة223',2,'2026-01-03',1230,'Power Supply 500W used',1,450],
+ ['مدينة نصر','مبيعات','عميل مبيعات الصيانة223',3,'2026-01-03',26986,'ACC Standard Smart Headphone GM-3501',1,250],
+ ['مدينة نصر','م . مبيعات','عميل مبيعات الصيانة223',1,'2026-02-09',26986,'ACC Standard Smart Headphone GM-3501',1,250],
+ ['مدينة نصر','مشتريات','شركة ماج تريد',1,'2026-01-01',125,'ACC Adapter',1,50],
+ ['مدينة نصر','مشتريات','العربى 1411',2,'2026-01-01',1308,'Dell LED 24" HDMI',1,1850],
+ ['مدينة نصر','مشتريات','R-مورد ورق',3,'2026-01-02',24142,'بكر باركود 3.8*2.5 - سليم - 1300 ستيكر',100,32.5],
+ ['مدينة نصر','م . مشتريات','شركة ماج تريد',1,'2026-02-25',125,'ACC Adapter',1,50],
+ ['مدينة نصر','استلام منتج من فرع اخر','المعادي',1,'2026-02-02',60013,'NCS-Point of Sale Cash - Drwaer X6 - 8K',1,1750],
+ ['مدينة نصر','استلام منتج من فرع اخر','المكتب',2,'2026-02-12',70092,'AN-Point of Sale Cash - Drwaer X3 - 5.5K',1,1100],
+ ['مدينة نصر','تحويل منتج الي فرع اخر','المعادي',1,'2026-01-02',24142,'بكر باركود 3.8*2.5 - سليم - 1300 ستيكر',50,32.5],
+ ['مدينة نصر','إيرادات','إيرادات متنوعة',1,'2026-01-02',1220,'إيرادات الدعم الفني',1,150],
+ ['مدينة نصر','إيرادات','إيرادات متنوعة',2,'2026-01-07',1220,'إيرادات الدعم الفني',1,200],
+ ['مدينة نصر','إيرادات','إيرادات متنوعة',3,'2026-01-13',858,'إيرادات ماكينات فوري',1,1100],
+ ['مدينة نصر','إيرادات','إيرادات متنوعة',4,'2026-02-28',858,'إيرادات ماكينات فوري',1,1200]
+].map(r=>{r[4]=toSerial(r[4]);return r});
+
+let state={pay:[],cash:{},exp:[],ledger:[],codes:{},groups:{},s:{...DEF},sample:true,ui:{irk:'*',ivw:'items',isort:'v',iq:'',cat:'*',tab:'inv',branch:'*',group:'*',risk:'خطر',more:30,view:'all',cls:0,sort:'gp',q:'',metric:'gp',cmetric:'gp',msg:null,mode:'replace',invOpen:false}};
+function loadSample(){state.exp=sampleExp();state.ledger=sampleRows();state.ledger.forEach((r,i)=>{if(opType(r[1])===2&&i%3===0){r[9]='آجل';r[2]=['شركة النور','محلات الأمل'][i%2]}});state.pay=[[toSerial('2026-02-10'),'مدينة نصر','تحصيل من عميل','شركة النور',100,'']];state.codes={...SAMPLE_CODES};state.groups={...SAMPLE_GROUPS};state.sample=true;}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({pay:state.pay,cash:state.cash,exp:state.exp,ledger:state.ledger,codes:state.codes,groups:state.groups,s:state.s,sample:state.sample}))}catch(e){}}
+function load(){
+  try{const j=JSON.parse(localStorage.getItem(KEY)||'null');if(j&&Array.isArray(j.ledger)){state.pay=Array.isArray(j.pay)?j.pay:[];state.cash=j.cash||{};state.exp=Array.isArray(j.exp)?j.exp:[];state.ledger=j.ledger;state.codes=j.codes||{};state.groups=j.groups||{};state.s={...DEF,...(j.s||{})};state.sample=!!j.sample;return;}}catch(e){}
+  loadSample();
+}
+
+/* ---------- FIFO engine ---------- */
+const isCredit=x=>normTxt(x).includes('اجل');
+function payKind(k){const n=normTxt(k);if(!n)return null;
+  if(n.includes('رصيد')||n.includes('افتتاح'))return{k:n.includes('مورد')?'AP':'AR',cls:'open',sign:1,label:'رصيد أول المدة'};
+  if(n.includes('تحصيل')||n.includes('قبض'))return{k:'AR',cls:'pay',sign:-1,label:'تحصيل'};
+  if(n.includes('سداد')||n.includes('دفع')||n.includes('صرف'))return{k:'AP',cls:'pay',sign:-1,label:'سداد'};
+  return null}
+function buildAcc(C){
+  const ev=[];
+  for(const r of C.rows){if(!r.cr)continue;const v=r.q*r.u,party=r.sup||'بدون اسم',doc=String(state.ledger[r.i][3]??'').trim();
+    const o={d:r.md,br:r.br,party,doc};
+    if(r.t===2)ev.push({...o,k:'AR',cls:'inv',a:v,type:'مبيعات آجلة'});
+    else if(r.t===8)ev.push({...o,k:'AR',cls:'inv',a:v,type:'إيراد آجل'});
+    else if(r.t===3)ev.push({...o,k:'AR',cls:'ret',a:-v,type:'مردود مبيعات آجل'});
+    else if(r.t===4)ev.push({...o,k:'AP',cls:'inv',a:v,type:'مشتريات آجلة'});
+    else if(r.t===5)ev.push({...o,k:'AP',cls:'ret',a:-v,type:'مردود مشتريات آجل'})}
+  for(const e of state.pay){const pk=payKind(e[2]),amt=Number(e[4])||0;if(!pk||e[0]==null||!amt)continue;
+    ev.push({d:e[0],br:isShared(e[1])?SHARED:String(e[1]).trim(),party:String(e[3]||'').trim()||'بدون اسم',doc:'',note:e[5]||'',k:pk.k,cls:pk.cls,a:pk.sign*amt,type:pk.label==='تحصيل'?'تحصيل نقدي':pk.label==='سداد'?'سداد نقدي':'رصيد أول المدة'})}
+  return ev}
+function prep(){
+  const S=state.s,rows=[],warn={unknown:{},nodate:0,badq:0};
+  state.ledger.forEach((r,i)=>{
+    const t=opType(r[1]);if(t===null)return;
+    if(t===0){warn.unknown[r[1]]=(warn.unknown[r[1]]||0)+1;return;}
+    const d=r[4],q=Number(r[7]),u=Number(r[8])||0;let ld,md;
+    if(t===1){ld=d??S.open;md=S.open;}else{if(d==null){warn.nodate++;return;}ld=md=d;}
+    if(!(q>0)){warn.badq++;return;}
+    const br=String(r[0]??'').trim(),code=String(r[5]??'').trim();
+    rows.push({i,br,t,cr:isCredit(r[9]),sup:String(r[2]??'').trim(),code,item:String(r[6]??'').trim(),q,u,ld,md,key:br+'|'+code});
+  });
+  return{rows,warn};
+}
+function runFifo(rows,until,avg){
+  /* Same method as the Excel program: units are consumed in cumulative order against layers sorted by (layer date, row). */
+  const r6=x=>Math.round(x*1e6)/1e6,isIn=r=>r.t===1||r.t===4||r.t===6;
+  const LB=new Map(),OB=new Map();
+  for(const r of rows){
+    if(isIn(r)){let a=LB.get(r.key);if(!a){a=[];LB.set(r.key,a)}a.push({ld:r.ld,i:r.i,q:r.q,rem:0,u:r.u,sup:r.sup,t:r.t,md:r.md,r})}
+    else if(r.t>=2&&r.t<=7&&r.md<=until){let a=OB.get(r.key);if(!a){a=[];OB.set(r.key,a)}a.push(r)}
+  }
+  const cost=new Map(),neg=new Map(),early=new Map();
+  for(const [key,ls] of LB){
+    ls.sort((x,y)=>x.ld-y.ld||x.i-y.i);let c=0;for(const L of ls){L.cumS=c;c=r6(c+L.q);L.cumE=c}
+  }
+  const keys=new Set([...LB.keys(),...OB.keys()]);
+  for(const key of keys){
+    const ls=LB.get(key)||[],evs=(OB.get(key)||[]).sort((x,y)=>x.md-y.md||x.i-y.i);
+    const Z=ls.length?ls[ls.length-1].cumE:0;
+    let AA=0;const code=key.slice(key.indexOf('|')+1),ka=avg.key.get(key),ca=avg.code.get(code);
+    if(Z>0&&ka&&ka.q>0)AA=ka.v/ka.q;else if(ca&&ca.q>0)AA=ca.v/ca.q;
+    const F=c=>{c=Math.max(0,c);let cov=0,val=0;
+      for(const L of ls){if(L.cumE<=c+1e-9){val+=L.q*L.u;cov=L.cumE}else{const u=c>Z?AA:(L.cumS<c?L.u:0);return val+(c-cov)*u}}
+      return val+(c-cov)*(c>Z?AA:0)};
+    let X=0;
+    for(const r of evs){
+      const sgn=r.t===3?-r.q:r.q,Y=r6(X+sgn);
+      cost.set(r.i,r6(F(Y)-F(X)));
+      if(Y>Z+1e-9)neg.set(key,Math.max(neg.get(key)||0,Y-Z));
+      let arrived=0;for(const L of ls)if(L.md<=r.md)arrived+=L.q;
+      if(sgn>0&&Y>arrived+1e-9)early.set(key,Math.max(early.get(key)||0,Y-arrived));
+      X=Y;
+    }
+    for(const L of ls)L.rem=L.md<=until?Math.max(0,Math.min(L.q,r6(L.cumE-Math.max(0,X)))):0;
+  }
+  return{L:LB,cost,neg,early};
+}
+
+/* ---------- compute every report ---------- */
+let CACHE=null,DIRTY=true;
+const catOf=code=>state.codes[code]||'غير مصنف';
+const grpOf=sup=>{const g=state.groups[sup];return GROUPS.includes(g)?g:'عادي'};
+function yearGroups(repY0){
+  const S=state.s,repY=repY0??ymd(S.rep)[0];
+  let ys=String(S.years||'').split(/[,،\s]+/).map(Number).filter(x=>x>1900);ys=[...new Set(ys)].sort((a,b)=>a-b);
+  if(!ys.length||ys[ys.length-1]<repY)ys.push(repY);
+  const starts=[0,...ys],labels=starts.map((s,i)=>{const nx=starts[i+1];if(i===0)return(nx-1)+' وما قبلها';if(nx==null)return''+s;return nx-s===1?''+s:s+' / '+(nx-1)});
+  return{starts,labels,idx:y=>{let k=0;for(let i=0;i<starts.length;i++)if(starts[i]<=y)k=i;return k}};
+}
+function makeInv(snap,rep,names,YG){
+  const S=state.s,inv=[];
+  for(const [key,arr] of snap.L)for(const ly of arr){
+    if(ly.rem<=1e-9)continue;
+    const r=ly.r,age=Math.max(0,rep-ly.ld),y=ymd(ly.ld)[0];
+    const band=age<=S.b1?0:age<=S.b2?1:age<=S.b3?2:3,yg=band===3?YG.idx(y):-1;
+    const risk=band<=1?'صحي':band===2?'بداية الخطر':(y>=ymd(rep)[0]-1?'بداية الخطر':'خطر');
+    const grp=grpOf(r.sup),val=ly.rem*ly.u;
+    inv.push({key,br:r.br,code:r.code,item:names.get(key)||r.item,sup:r.t===6?'تحويل من '+r.sup:r.sup,grp,ld:ly.ld,u:ly.u,q:ly.rem,val,age,band,yg,risk,cat:catOf(r.code),dec:RISK_DEC[risk][GROUPS.indexOf(grp)]});
+  }
+  return inv;
+}
+function invAt(C,d,YG){
+  const k=d+'|'+YG.starts.join(',');C.cmp=C.cmp||{};
+  if(!C.cmp[k])C.cmp[k]=makeInv(runFifo(C.rows,d,C.avg),d,C.names,YG);
+  return C.cmp[k];
+}
+function compute(){
+  if(!DIRTY&&CACHE)return CACHE;
+  const S=state.s,{rows,warn}=prep();
+  const rep=S.rep,from=S.from??0,to=S.to??rep,Y=S.year??ymd(to)[0];
+  // all-time average cost fallbacks
+  const avg={key:new Map(),code:new Map()};
+  for(const r of rows)if(r.t===1||r.t===4||r.t===6){for(const [m,k] of [[avg.key,r.key],[avg.code,r.code]]){const a=m.get(k)||{q:0,v:0};a.q+=r.q;a.v+=r.q*r.u;m.set(k,a)}}
+  const maxD=Math.max(rep,to);
+  const full=runFifo(rows,maxD,avg),snap=rep===maxD?full:runFifo(rows,rep,avg);
+  const YG=yearGroups(),names=new Map();
+  for(const r of rows)if(r.item)names.set(r.key,r.item);
+  const inv=makeInv(snap,rep,names,YG);
+  // profit aggregates
+  const mk=()=>({s:0,c:0,o:0,q:0}),brAgg=new Map(),brM=new Map(),itAgg=new Map(),caAgg=new Map(),caM=new Map();
+  const get=(m,k,f)=>{let v=m.get(k);if(!v){v=f();m.set(k,v)}return v};
+  const msArr=()=>Array.from({length:12},mk);
+  for(const r of rows){
+    if(r.t<2||r.t>8||r.t===4||r.t===5||r.t===6||r.t===7||r.md<from||r.md>to)continue;
+    let s=0,c=0,o=0,q=0;
+    if(r.t===2){s=r.q*r.u;c=full.cost.get(r.i)||0;q=r.q}
+    else if(r.t===3){s=-r.q*r.u;c=full.cost.get(r.i)||0;q=-r.q}
+    else if(r.t===8)o=r.q*r.u;
+    const [yy,mm]=ymd(r.md),add=(x)=>{x.s+=s;x.c+=c;x.o+=o;x.q+=q};
+    add(get(brAgg,r.br,mk));
+    if(yy===Y)add(get(brM,r.br,msArr)[mm-1]);
+    if(r.t!==8){
+      const it=get(itAgg,r.key,()=>({br:r.br,code:r.code,item:names.get(r.key)||r.item,s:0,c:0,o:0,q:0}));add(it);
+      const cat=catOf(r.code),ck=r.br+'\t'+cat;
+      add(get(caAgg,ck,()=>({br:r.br,cat,s:0,c:0,o:0,q:0})));
+      if(yy===Y)add(get(caM,ck,msArr)[mm-1]);
+    }
+  }
+  const expBr=new Map(),expM=new Map(),expBranches=new Set();
+  for(const e of state.exp){const d=e[0],amt=Number(e[4])||0;if(d==null||!amt)continue;
+    const br=isShared(e[1])?SHARED:String(e[1]).trim();if(br!==SHARED)expBranches.add(br);
+    const [yy,mm]=ymd(d);
+    if(d>=from&&d<=to){const g=String(e[3]||'').trim()||'مصروفات أخرى',it=String(e[2]||'').trim()||g,gm=get(get(expBr,br,()=>new Map()),g,()=>new Map());gm.set(it,(gm.get(it)||0)+amt)}
+    if(yy===Y)get(expM,br,()=>Array(12).fill(0))[mm-1]+=amt}
+  const ledBr=new Set([...state.ledger.map(r=>String(r[0]??'').trim()),...rows.map(r=>r.br)].filter(Boolean));
+  const branches=[...new Set([...ledBr,...expBranches])].filter(Boolean);
+  // items
+  const days=Math.max(1,to-from+1),items=new Map();
+  const ensure=key=>get(items,key,()=>{const[br,code]=key.split('|');return{key,br,code,item:names.get(key)||'',cat:catOf(code),s:0,c:0,q:0,remQ:0,remV:0,oldest:null}});
+  for(const[k,a]of itAgg){const x=ensure(k);x.s=a.s;x.c=a.c;x.q=a.q;x.item=a.item||x.item}
+  for(const l of inv){const x=ensure(l.key);x.remQ+=l.q;x.remV+=l.val;x.oldest=x.oldest==null?l.age:Math.max(x.oldest,l.age)}
+  const itemList=[...items.values()];
+  for(const x of itemList){x.gp=x.s-x.c;x.m=x.s?x.gp/x.s:0;x.cover=x.q>0?Math.round(x.remQ*days/x.q):null}
+  const byBr=new Map();for(const x of itemList)get(byBr,x.br,()=>[]).push(x);
+  const hi=S.hi/100,A=S.A/100,B=S.B/100;
+  for(const arr of byBr.values()){
+    arr.sort((a,b)=>b.gp-a.gp);const pos=arr.reduce((t,x)=>t+(x.gp>0?x.gp:0),0);let run=0;
+    for(const x of arr){
+      const before=pos?run/pos:0;if(x.gp>0)run+=x.gp;
+      x.abc=x.gp>0?(before<A?'أ':before<B?'ب':'ج'):'-';
+      if(!x.s&&!x.q)x.cls=x.remQ>0?6:7;
+      else if(x.gp<0)x.cls=5;else if(x.gp===0)x.cls=4;
+      else if(before<A)x.cls=x.m>=hi?1:2;else x.cls=x.m>=hi?3:4;
+    }
+  }
+  CACHE={avg,expBr,expM,ledBr,rows,warn,full,snap,inv,branches,from,to,rep,Y,days,brAgg,brM,itAgg,caAgg,caM,itemList,YG,neg:snap.neg,early:snap.early,names};
+  DIRTY=false;return CACHE;
+}
+
+/* ---------- view helpers ---------- */
+const U=()=>state.ui;
+const sel=(id,opts,val,key)=>`<select id="${id}" data-k="${key}">${opts.map(([v,l])=>`<option value="${esc(v)}"${String(v)===String(val)?' selected':''}>${esc(l)}</option>`).join('')}</select>`;
+const brOpts=C=>[['*','كل الفروع'],...C.branches.map(b=>[b,b])];
+const seg=(key,val,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button type="button" data-act="set" data-k="${key}" data-v="${esc(v)}" aria-pressed="${String(v)===String(val)}">${esc(l)}</button>`).join('')}</div>`;
+const matchBr=(C,b)=>U().branch==='*'||b===U().branch;
+
+function chartBars(vals,pct){
+  const W=340,H=170,pl=4,pr=4,pt=16,pb=22,mx=Math.max(0,...vals),mn=Math.min(0,...vals),rg=(mx-mn)||1,y=v=>pt+(mx-v)/rg*(H-pt-pb),bw=(W-pl-pr)/12;
+  const f=v=>pct?(v*100).toFixed(0)+'%':Math.abs(v)>=1000?(v/1000).toFixed(Math.abs(v)>=10000?0:1)+'K':Math.round(v);
+  let s=`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="رسم شهري"><line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="var(--line)"/>`;
+  vals.forEach((v,i)=>{const x=pl+(11-i)*bw+bw*.16,h=Math.abs(y(v)-y(0)),top=v>=0?y(v):y(0);
+    s+=`<rect x="${x}" y="${top}" width="${bw*.68}" height="${v?Math.max(h,1.5):0}" rx="2" fill="${v<0?'var(--bad)':'var(--accent)'}"/>`;
+    s+=`<text x="${x+bw*.34}" y="${H-7}" text-anchor="middle">${i+1}</text>`;
+    if(v&&bw>26)s+=`<text x="${x+bw*.34}" y="${(v>=0?top-3:top+h+10)}" text-anchor="middle" style="fill:var(--ink)">${f(v)}</text>`});
+  return s+'</svg>';
+}
+
+/* ---------- tabs ---------- */
+function viewInventory(C){
+  const u=U(),S=state.s,qn=normTxt(u.iq||'');
+  const base=C.inv.filter(l=>matchBr(C,l.br)&&(u.group==='*'||l.grp===u.group)&&(u.cat==='*'||l.cat===u.cat)&&(!qn||normTxt((l.item||'')+l.code+l.cat).includes(qn)));
+  const sum=(a,f=()=>true)=>a.reduce((t,l)=>f(l)?t+l.val:t,0),qty=(a,f=()=>true)=>a.reduce((t,l)=>f(l)?t+l.q:t,0);
+  const tot=sum(base),totQ=qty(base),nItems=new Set(base.map(l=>l.key)).size;
+  const wAge=tot?base.reduce((t,l)=>t+l.age*l.val,0)/tot:0;
+  const rv=r=>sum(base,l=>l.risk===r),rc=r=>base.filter(l=>l.risk===r).length;
+  const kp=(lab,r,color)=>`<div class="kpi"><small style="color:${color}">${lab}</small><b>${N(rv(r))}</b><i>${PC(tot?rv(r)/tot:0)} · ${N(rc(r))} شحنة</i></div>`;
+  const BL=[`حتى ${S.b1} يوم`,`${S.b1+1} – ${S.b2} يوم`,`${S.b2+1} – ${S.b3} يوم`,`أكثر من ${S.b3} يوم`];
+  const bandRisk=['صحي','صحي','بداية الخطر',null];
+  // ---- age distribution table
+  const bands=[{l:`حتى ${S.b1} يوم`,r:'صحي',f:l=>l.band===0},{l:`من ${S.b1+1} إلى ${S.b2} يوم`,r:'صحي',f:l=>l.band===1},{l:`من ${S.b2+1} إلى ${S.b3} يوم`,r:'بداية الخطر',f:l=>l.band===2}];
+  C.YG.labels.forEach((lb,i)=>{const yy=C.YG.starts[i];bands.push({l:`أكثر من ${S.b3} يوم — ${lb}`,r:yy>=ymd(C.rep)[0]-1?'بداية الخطر':'خطر',f:l=>l.band===3&&l.yg===i})});
+  const bd=bands.map(b=>({...b,v:sum(base,b.f),q:qty(base,b.f),n:base.filter(b.f).length})).filter((b,i)=>i<3||b.v>0);
+  const mxv=Math.max(1,...bd.map(b=>b.v));
+  const distRows=bd.map(b=>`<tr><td><i class="dot" style="background:${RISK_COLOR[b.r]}"></i>${esc(b.l)}</td><td class="num">${N(b.n)}</td><td class="num">${N(b.q,b.q%1?2:0)}</td><td class="num"><b>${N(b.v)}</b></td><td class="num mu">${PC(tot?b.v/tot:0)}</td><td style="min-width:110px"><span class="mb"><i style="width:${b.v/mxv*100}%;background:${RISK_COLOR[b.r]}"></i></span></td></tr>`).join('');
+  // ---- branch matrix
+  let brT='';
+  if(u.branch==='*'&&C.branches.length>1){
+    const bs=C.branches.map(b=>{const r=base.filter(l=>l.br===b);return{b,r,t:sum(r),q:qty(r),n:new Set(r.map(l=>l.key)).size,bv:[0,1,2,3].map(k=>sum(r,l=>l.band===k)),d:sum(r,l=>l.risk==='خطر'),w:sum(r)?r.reduce((t,l)=>t+l.age*l.val,0)/sum(r):0}}).filter(x=>x.t>0||x.n);
+    const row=(n,x,cls='')=>`<tr class="${cls}"><td>${n}</td><td class="num">${N(x.n)}</td><td class="num">${N(x.q,x.q%1?2:0)}</td><td class="num"><b>${N(x.t)}</b></td>${x.bv.map(v=>`<td class="num ${'gs'}">${v?N(v):'—'}</td>`).join('')}<td class="num gs">${x.d?`<span class="pill bad"><span class="n">${F(x.d)}</span></span>`:'—'}</td><td class="num">${PC(x.t?x.d/x.t:0)}</td><td class="num mu">${N(x.w)} يوم</td></tr>`;
+    const T=bs.reduce((t,x)=>({n:t.n+x.n,q:t.q+x.q,t:t.t+x.t,bv:t.bv.map((v,i)=>v+x.bv[i]),d:t.d+x.d,w:0}),{n:0,q:0,t:0,bv:[0,0,0,0],d:0,w:0});T.w=wAge;
+    brT=`<div class="card"><h2>المخزون حسب الفرع والعمر</h2><div class="tw"><table class="ct"><thead><tr class="g"><th rowspan="2" style="text-align:start">الفرع</th><th rowspan="2">الأصناف</th><th rowspan="2">الكمية</th><th rowspan="2">القيمة</th><th colspan="4" class="gs">القيمة حسب العمر</th><th colspan="2" class="gs">خطر (راكد)</th><th rowspan="2" class="gs">متوسط العمر</th></tr><tr class="s">${BL.map((l,i)=>`<th class="${i?'':'gs'}">${l}</th>`).join('')}<th class="gs">القيمة</th><th>%</th></tr></thead><tbody>${bs.map(x=>row(esc(x.b),x)).join('')}</tbody><tfoot>${row('الإجمالي',T)}</tfoot></table></div></div>`;
+  }
+  // ---- category table
+  const cm=new Map();
+  for(const l of base){let v=cm.get(l.cat);if(!v){v={c:l.cat,keys:new Set(),q:0,t:0,h:0,w:0,d:0};cm.set(l.cat,v)}v.keys.add(l.key);v.q+=l.q;v.t+=l.val;if(l.risk==='صحي')v.h+=l.val;else if(l.risk==='بداية الخطر')v.w+=l.val;else v.d+=l.val}
+  const cats=[...cm.values()].sort((a,b)=>b.t-a.t),catShow=u.catAll?cats:cats.slice(0,12);
+  const catRow=x=>`<tr><td style="white-space:normal;min-width:120px">${esc(x.c)}</td><td class="num">${N(x.keys.size)}</td><td class="num">${N(x.q,x.q%1?2:0)}</td><td class="num"><b>${N(x.t)}</b></td><td class="num mu">${PC(tot?x.t/tot:0)}</td><td class="num gs">${N(x.h)}</td><td class="num">${N(x.w)}</td><td class="num">${x.d?`<span class="pill bad"><span class="n">${F(x.d)}</span></span>`:'—'}</td><td class="num">${PC(x.t?x.d/x.t:0)}</td></tr>`;
+  const catT=cats.length?`<div class="card"><h2>المخزون حسب التصنيف</h2><div class="tw"><table class="ct"><thead><tr class="g"><th rowspan="2" style="text-align:start">التصنيف</th><th rowspan="2">الأصناف</th><th rowspan="2">الكمية</th><th rowspan="2">القيمة</th><th rowspan="2">% من الإجمالي</th><th colspan="3" class="gs">القيمة حسب الخطورة</th><th rowspan="2" class="gs">% خطر</th></tr><tr class="s"><th class="gs">صحي</th><th>بداية الخطر</th><th>خطر</th></tr></thead><tbody>${catShow.map(catRow).join('')}</tbody><tfoot><tr><td>الإجمالي</td><td class="num">${N(nItems)}</td><td class="num">${N(totQ,totQ%1?2:0)}</td><td class="num">${N(tot)}</td><td class="num">${PC(1)}</td><td class="num gs">${N(rv('صحي'))}</td><td class="num">${N(rv('بداية الخطر'))}</td><td class="num">${N(rv('خطر'))}</td><td class="num">${PC(tot?rv('خطر')/tot:0)}</td></tr></tfoot></table></div>${cats.length>12?`<p style="text-align:center;margin:10px 0 0"><button class="btn" data-act="catall">${u.catAll?'عرض أول 12 فقط':'عرض كل التصنيفات ('+cats.length+')'}</button></p>`:''}</div>`:'';
+  // ---- detail
+  const det=base.filter(l=>u.irk==='*'||l.risk===u.irk);
+  const sortK=u.isort||'v';let head,rowsH,cnt,exp;
+  if(u.ivw==='layers'){
+    const arr=det.slice().sort((a,b)=>sortK==='old'?b.age-a.age:sortK==='q'?b.q-a.q:sortK==='name'?String(a.item||a.code).localeCompare(String(b.item||b.code),'ar'):b.val-a.val);cnt=arr.length;
+    const sh=arr.slice(0,u.more);
+    head=`<thead><tr class="g"><th style="text-align:start">الصنف</th><th>الفرع</th><th>المورد / المصدر</th><th>تاريخ الشحنة</th><th>العمر (يوم)</th><th>الكمية</th><th>تكلفة الوحدة</th><th>القيمة</th><th>المستوى</th><th>الإجراء المقترح</th></tr></thead>`;
+    rowsH=sh.map(l=>`<tr><td style="white-space:normal;min-width:160px">${esc(l.item||l.code)}<br><small class="mu" style="color:var(--muted)">كود ${esc(l.code)} · ${esc(l.cat)}</small></td><td>${esc(l.br)}</td><td style="white-space:normal;min-width:100px">${esc(l.sup)||'—'}<br><small style="color:var(--muted)">${esc(l.grp)}</small></td><td class="num">${D(l.ld)}</td><td class="num">${N(l.age)}</td><td class="num">${N(l.q,l.q%1?2:0)}</td><td class="num">${N(l.u,2)}</td><td class="num"><b>${N(l.val)}</b></td><td><span class="chip" style="--c:${RISK_COLOR[l.risk]}">${esc(l.risk)}</span></td><td style="white-space:normal;min-width:140px;font-size:12px">${esc(l.dec)}</td></tr>`).join('');
+    exp=[['الصنف','الكود','التصنيف','الفرع','المورد','المجموعة','تاريخ الشحنة','العمر (يوم)','الكمية','تكلفة الوحدة','القيمة','المستوى'],...arr.map(l=>[l.item||l.code,l.code,l.cat,l.br,l.sup,l.grp,toISO(l.ld),l.age,l.q,l.u,l.val,l.risk])];
+    var more=arr.length>sh.length?arr.length-sh.length:0;
+  }else{
+    const im=new Map();
+    for(const l of det){let v=im.get(l.key);if(!v){v={item:l.item||l.code,code:l.code,cat:l.cat,br:l.br,q:0,t:0,old:0,w:0,bv:[0,0,0,0],d:0,n:0,rk:{}};im.set(l.key,v)}
+      v.q+=l.q;v.t+=l.val;v.w+=l.age*l.val;v.old=Math.max(v.old,l.age);v.bv[l.band]+=l.val;if(l.risk==='خطر')v.d+=l.val;v.n++;v.rk[l.risk]=1}
+    const arr=[...im.values()].map(x=>({...x,w:x.t?x.w/x.t:0,top:x.rk['خطر']?'خطر':x.rk['بداية الخطر']?'بداية الخطر':'صحي'})).sort((a,b)=>sortK==='old'?b.old-a.old:sortK==='q'?b.q-a.q:sortK==='dv'?b.d-a.d:sortK==='name'?String(a.item).localeCompare(String(b.item),'ar'):b.t-a.t);cnt=arr.length;
+    const sh=arr.slice(0,u.more);
+    head=`<thead><tr class="g"><th rowspan="2" style="text-align:start">الصنف</th><th rowspan="2">الفرع</th><th rowspan="2">الكمية</th><th rowspan="2">متوسط التكلفة</th><th rowspan="2">القيمة</th><th colspan="4" class="gs">القيمة حسب العمر</th><th rowspan="2" class="gs">أقدم عمر</th><th rowspan="2">متوسط العمر</th><th rowspan="2">الحالة</th></tr><tr class="s">${BL.map((l,i)=>`<th class="${i?'':'gs'}">${l}</th>`).join('')}</tr></thead>`;
+    rowsH=sh.map(x=>`<tr><td style="white-space:normal;min-width:170px">${esc(x.item)}<br><small style="color:var(--muted)">كود ${esc(x.code)} · ${esc(x.cat)}</small></td><td>${esc(x.br)}</td><td class="num">${N(x.q,x.q%1?2:0)}</td><td class="num">${N(x.q?x.t/x.q:0,2)}</td><td class="num"><b>${N(x.t)}</b></td>${x.bv.map((v,i)=>`<td class="num ${i?'':'gs'}">${v?(i===3?`<span class="pill bad"><span class="n">${F(v)}</span></span>`:N(v)):'—'}</td>`).join('')}<td class="num gs">${N(x.old)}</td><td class="num mu">${N(x.w)}</td><td><span class="chip" style="--c:${RISK_COLOR[x.top]}">${esc(x.top)}</span></td></tr>`).join('');
+    exp=[['الصنف','الكود','التصنيف','الفرع','الكمية','متوسط التكلفة','القيمة',...BL.map(l=>'قيمة '+l),'أقدم عمر','متوسط العمر','الحالة'],...arr.map(x=>[x.item,x.code,x.cat,x.br,x.q,x.q?x.t/x.q:0,x.t,...x.bv,x.old,x.w,x.top])];
+    var more=arr.length>sh.length?arr.length-sh.length:0;
+  }
+  window.INVX={rows:exp,date:toISO(S.rep)};
+  const sortOpts=u.ivw==='layers'?[['v','القيمة'],['old','العمر'],['q','الكمية'],['name','الاسم']]:[['v','القيمة'],['dv','قيمة الخطر'],['old','أقدم عمر'],['q','الكمية'],['name','الاسم']];
+  const sortSel=sortOpts.some(o=>o[0]===sortK)?sortK:'v';
+  return`<div class="stack">
+    <div class="card"><h2>مخزون البضاعة</h2><div class="row"><label>رصيد البضاعة بتاريخ<input type="date" id="rep" data-k="rep" data-date value="${toISO(S.rep)}"></label>
+      <label>المجموعة${sel('grp',[['*','الكل'],...GROUPS.map(g=>[g,g])],u.group,'group')}</label></div>
+      <div class="row" style="margin-top:8px"><label>التصنيف${sel('catf',catOpts(C),u.cat,'cat')}</label><label style="flex:1 1 150px">بحث<input type="search" id="iq" placeholder="اسم الصنف أو الكود" value="${esc(u.iq||'')}"></label></div>
+      <p class="note" style="margin:8px 0 0">يعرض المخزون وأعماره كما كان في التاريخ المختار (تُستبعد كل حركة بعده). الفرع من أعلى الصفحة. كل الأرقام بالتكلفة.</p></div>
+    <div class="kpis"><div class="kpi big"><small>إجمالي تقييم المخزون بالتكلفة</small><b>${N(tot)}</b><i>بتاريخ ${D(S.rep)}</i></div></div>
+    <div class="kpis three"><div class="kpi"><small>عدد الأصناف</small><b>${N(nItems)}</b><i>${N(base.length)} شحنة</i></div><div class="kpi"><small>إجمالي الكمية</small><b>${N(totQ,totQ%1?2:0)}</b></div><div class="kpi"><small>متوسط العمر</small><b>${N(wAge)}</b><i>يوم (مرجح بالقيمة)</i></div></div>
+    <div class="kpis three">${kp('صحي','صحي','var(--c1)')}${kp('بداية الخطر','بداية الخطر','var(--c4)')}${kp('خطر (راكد)','خطر','var(--c5)')}</div>
+    <div class="card"><h2>توزيع المخزون حسب العمر</h2><div class="tw"><table class="ct"><thead><tr class="g"><th style="text-align:start">فئة العمر</th><th>الشحنات</th><th>الكمية</th><th>القيمة</th><th>%</th><th>النصيب</th></tr></thead><tbody>${distRows||'<tr><td colspan="6" class="empty">لا يوجد رصيد في هذا التاريخ</td></tr>'}</tbody><tfoot><tr><td>الإجمالي</td><td class="num">${N(base.length)}</td><td class="num">${N(totQ,totQ%1?2:0)}</td><td class="num">${N(tot)}</td><td class="num">${PC(tot?1:0)}</td><td></td></tr></tfoot></table></div></div>
+    ${brT}
+    ${catT}
+    <div class="card"><h2>تفاصيل المخزون</h2>
+      ${seg('ivw',u.ivw||'items',[['items','حسب الصنف'],['layers','حسب الشحنة']])}
+      <div style="height:8px"></div>${seg('irk',u.irk||'*',[['*','الكل'],['خطر','خطر'],['بداية الخطر','بداية الخطر'],['صحي','صحي']])}
+      <div class="row" style="margin-top:10px;align-items:end"><label>ترتيب${sel('isrt',sortOpts,sortSel,'isort')}</label><button class="btn" data-act="xinv">تصدير إلى إكسيل</button></div>
+      <p class="note">${N(cnt)} ${u.ivw==='layers'?'شحنة':'صنف'} · بقيمة ${N(det.reduce((t,l)=>t+l.val,0))}<span id="xmsg" style="margin-inline-start:8px"></span></p>
+      <div class="tw"><table class="ct">${head}<tbody>${rowsH||'<tr><td colspan="12" class="empty">لا توجد بنود مطابقة</td></tr>'}</tbody></table></div>
+      ${more?`<p style="text-align:center;margin:10px 0 0"><button class="btn" data-act="more">عرض المزيد (${N(more)})</button></p>`:''}</div></div>`;
+}
+
+function catOpts(C){const set=new Set();for(const x of C.itemList)set.add(x.cat);for(const a of C.caAgg.values())set.add(a.cat);return[['*','كل التصنيفات'],...[...set].filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'ar')).map(c=>[c,c])]}
+function filterBar(C,withText){const u=U();return`<div class="row" style="margin-top:10px">${withText?`<label style="flex:1 1 160px">بحث<input type="search" id="q" data-k="q" placeholder="${u.tab==='cats'?'اسم التصنيف':'اسم الصنف أو الكود'}" value="${esc(u.q)}"></label>`:''}<label style="flex:1 1 140px">التصنيف${sel('catf',catOpts(C),u.cat,'cat')}</label></div>`}
+function viewProfit(C){
+  const u=U(),S=state.s,Y=C.Y;
+  const brs=C.branches.filter(b=>matchBr(C,b));
+  const cf=u.cat&&u.cat!=='*'?u.cat:null;
+  const g=cf?(b)=>{let s=0,c=0;for(const a of C.caAgg.values())if(a.br===b&&a.cat===cf){s+=a.s;c+=a.c}return{s,c,o:0}}:(b)=>C.brAgg.get(b)||{s:0,c:0,o:0};
+  const T=brs.reduce((t,b)=>{const a=g(b);t.s+=a.s;t.c+=a.c;t.o+=a.o;return t},{s:0,c:0,o:0});
+  const totalAll=T.s-T.c+T.o;
+  const rowsT=brs.map(b=>{const a=g(b),gp=a.s-a.c;return`<tr><td>${esc(b)}</td><td class="num">${N(a.s)}</td><td class="num">${N(a.c)}</td><td class="num">${N(gp,0,1)}</td><td class="num">${PC(a.s?gp/a.s:0,1)}</td><td class="num">${N(a.o)}</td><td class="num"><b>${N(gp+a.o,0,1)}</b></td><td class="num">${PC(totalAll?(gp+a.o)/totalAll:0)}</td></tr>`}).join('');
+  const msFor=cf?(b=>{const r=Array.from({length:12},()=>({s:0,c:0,o:0})),ms=C.caM.get(b+'\t'+cf);if(ms)ms.forEach((m,i)=>{r[i].s=m.s;r[i].c=m.c});return r}):(b=>C.brM.get(b)||Array.from({length:12},()=>({s:0,c:0,o:0})));
+  const val=(m,met)=>met==='sales'?m.s:met==='cogs'?m.c:met==='oth'?m.o:met==='gpo'?m.s-m.c+m.o:met==='mg'?(m.s?(m.s-m.c)/m.s:0):m.s-m.c;
+  const met=u.metric,ml={gp:'مجمل الربح',sales:'المبيعات',cogs:'التكلفة',oth:'إيرادات أخرى',gpo:'إجمالي الربح',mg:'الهامش %'}[met];
+  const totM=Array.from({length:12},(_,i)=>brs.reduce((t,b)=>{const m=msFor(b)[i];t.s+=m.s;t.c+=m.c;t.o+=m.o;return t},{s:0,c:0,o:0}));
+  const chartV=totM.map(m=>val(m,met));
+  const fm=v=>met==='mg'?PC(v,1):N(v,0,1);
+  const mrows=brs.map(b=>{const ms=msFor(b),tot=ms.reduce((t,m)=>({s:t.s+m.s,c:t.c+m.c,o:t.o+m.o}),{s:0,c:0,o:0});return`<tr><td>${esc(b)}</td>${ms.map(m=>`<td class="num">${fm(val(m,met))}</td>`).join('')}<td class="num"><b>${fm(val(tot,met))}</b></td></tr>`}).join('');
+  const grand=totM.reduce((t,m)=>({s:t.s+m.s,c:t.c+m.c,o:t.o+m.o}),{s:0,c:0,o:0});
+  const yrs=[];for(let y=ymd(C.from)[0];y<=ymd(C.to)[0];y++)yrs.push([y,y]);if(!yrs.length)yrs.push([Y,Y]);
+  return`<div class="stack">
+    <div class="card"><h2>فترة الربحية</h2><div class="row"><label>من<input type="date" id="from" data-k="from" data-date value="${toISO(S.from)}"></label>
+      <label>إلى<input type="date" id="to" data-k="to" data-date value="${S.to==null?'':toISO(S.to)}"></label>
+      <label>سنة الشهور${sel('yr',yrs,Y,'year')}</label></div>${filterBar(C,false)}${cf?`<p class="note" style="margin:8px 0 0">النتائج لتصنيف «${esc(cf)}» فقط (الإيرادات الأخرى غير مرتبطة بتصنيف فلا تظهر).</p>`:''}
+      <p class="note" style="margin:8px 0 0">${S.to==null?'نهاية الفترة فارغة، فتساوي تاريخ التقرير '+toISO(S.rep)+'. ':''}${S.to!=null?`<button class="btn" data-act="clearto" style="min-height:30px;padding:3px 10px">استخدم تاريخ التقرير كنهاية</button>`:''}</p></div>
+    <div class="kpis"><div class="kpi big"><small>إجمالي الربح (مجمل الربح + إيرادات أخرى)</small><b>${N(totalAll,0,1)}</b><i>من ${D(C.from)} إلى ${D(C.to)}</i></div>
+      <div class="kpi"><small>المبيعات (صافي)</small><b>${N(T.s)}</b></div><div class="kpi"><small>مجمل الربح</small><b>${N(T.s-T.c,0,1)}</b><i>هامش ${PC(T.s?(T.s-T.c)/T.s:0,1)}</i></div></div>
+    <div class="card"><h2>ربحية كل فرع</h2><div class="tw"><table><thead><tr><th>الفرع</th><th class="num">المبيعات</th><th class="num">التكلفة</th><th class="num">مجمل الربح</th><th class="num">الهامش</th><th class="num">إيرادات أخرى</th><th class="num">الإجمالي</th><th class="num">النصيب</th></tr></thead><tbody>${rowsT||'<tr><td colspan="8" class="empty">لا توجد بيانات</td></tr>'}</tbody>
+      <tfoot><tr><td>الإجمالي</td><td class="num">${N(T.s)}</td><td class="num">${N(T.c)}</td><td class="num">${N(T.s-T.c,0,1)}</td><td class="num">${PC(T.s?(T.s-T.c)/T.s:0,1)}</td><td class="num">${N(T.o)}</td><td class="num">${N(totalAll,0,1)}</td><td class="num">${PC(1)}</td></tr></tfoot></table></div>
+      <p class="note" style="margin-bottom:0">التكلفة بنظام الوارد أولاً يصرف أولاً لكل فرع. لا توجد مصروفات تشغيلية في البيانات، فالربح هنا هو مجمل الربح.</p></div>
+    <div class="card"><h2>الربحية الشهرية — ${Y}</h2>${seg('metric',met,[['gp','مجمل الربح'],['sales','المبيعات'],['cogs','التكلفة'],['oth','إيرادات أخرى'],['gpo','الإجمالي'],['mg','الهامش %']])}
+      <p class="note">${ml} لكل شهر (رقم الشهر تحت العمود). المقياس يُطبّق على الجدول أدناه أيضاً.</p>${chartBars(chartV,met==='mg')}
+      <div class="tw"><table><thead><tr><th>الفرع</th>${MONTHS.map((m,i)=>`<th class="num">${i+1}<br>${m}</th>`).join('')}<th class="num">الإجمالي</th></tr></thead><tbody>${mrows}</tbody>
+      <tfoot><tr><td>الكل</td>${totM.map(m=>`<td class="num">${fm(val(m,met))}</td>`).join('')}<td class="num">${fm(val(grand,met))}</td></tr></tfoot></table></div></div></div>`;
+}
+
+
+/* ---------- income statement ---------- */
+function stmtOf(C,agg,expMap){
+  const a=agg||{s:0,c:0,o:0},grp=new Map();
+  if(expMap)for(const[g,im]of expMap)grp.set(g,[...im.values()].reduce((t,x)=>t+x,0));
+  return{s:a.s,c:a.c,o:a.o,gp:a.s-a.c,grp,ex:0,net:0};
+}
+function viewIncome(C){
+  const u=U(),S=state.s,Y=C.Y,alloc=u.alloc==='sales';
+  const brs=C.branches.filter(b=>matchBr(C,b));
+  const cols=brs.map(b=>({name:b,...stmtOf(C,C.brAgg.get(b),C.expBr.get(b))}));
+  const sh=C.expBr.get(SHARED),oneBr=u.branch!=='*';
+  if(sh&&!oneBr){
+    if(alloc&&cols.length){const tS=cols.reduce((t,c)=>t+Math.max(0,c.s),0);
+      for(const c of cols){const w=tS>0?Math.max(0,c.s)/tS:1/cols.length;
+        for(const[g,im]of sh){const v=[...im.values()].reduce((t,x)=>t+x,0)*w;c.grp.set(g,(c.grp.get(g)||0)+v)}}}
+    else cols.push({name:'مشترك (غير موزع)',...stmtOf(C,null,sh),shared:true});
+  }
+  for(const c of cols){c.ex=[...c.grp.values()].reduce((t,x)=>t+x,0);c.net=c.gp+c.o-c.ex}
+  const T=cols.reduce((t,c)=>{t.s+=c.s;t.c+=c.c;t.o+=c.o;t.gp+=c.gp;t.ex+=c.ex;t.net+=c.net;for(const[g,v]of c.grp)t.grp.set(g,(t.grp.get(g)||0)+v);return t},{name:'الإجمالي',s:0,c:0,o:0,gp:0,ex:0,net:0,grp:new Map()});
+  const all=[...cols,T],gl=[...T.grp.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  const th=all.map(c=>`<th class="num">${esc(c.name)}</th>`).join('');
+  const rw=(lab,f,cls='')=>`<tr class="${cls}"><td>${lab}</td>${all.map(c=>`<td class="num">${f(c)}</td>`).join('')}</tr>`;
+  const pct=(a,b)=>b?PC(a/b,1):'-';
+  const rows=[
+    rw('المبيعات (صافي بعد المردودات)',c=>N(c.s)),
+    rw('تكلفة البضاعة المباعة',c=>N(-c.c,0,1)),
+    rw('مجمل الربح',c=>N(c.gp,0,1),'tot'),
+    rw('هامش مجمل الربح',c=>pct(c.gp,c.s),'sm'),
+    rw('إيرادات أخرى',c=>N(c.o)),
+    `<tr class="hd"><td colspan="${all.length+1}">المصروفات</td></tr>`,
+    ...gl.map(g=>rw(esc(g),c=>c.grp.has(g)?N(-c.grp.get(g),0,1):'-')),
+    gl.length?'':`<tr><td colspan="${all.length+1}" class="empty">لا توجد مصروفات في الفترة. أضف مصروفاتك من الأسفل أو استوردها من الملف.</td></tr>`,
+    rw('إجمالي المصروفات',c=>N(-c.ex,0,1),'tot'),
+    rw('صافي الربح',c=>N(c.net,0,1),'tot big'),
+    rw('هامش صافي الربح',c=>pct(c.net,c.s),'sm'),
+    rw('المصروفات من المبيعات',c=>pct(c.ex,c.s),'sm')
+  ].join('');
+  // monthly net
+  const brsM=[...brs,...(sh&&!oneBr&&!alloc?[SHARED]:[])];
+  const mArr=b=>{const ms=C.brM.get(b)||[],ex=C.expM.get(b)||[];return Array.from({length:12},(_,i)=>{const m=ms[i]||{s:0,c:0,o:0};return(m.s-m.c+m.o)-(ex[i]||0)})};
+  let rowsM=brsM.map(b=>({b,v:mArr(b)}));
+  if(sh&&!oneBr&&alloc){const shm=C.expM.get(SHARED)||[],tS=Array.from({length:12},(_,i)=>brs.reduce((t,b)=>t+Math.max(0,(C.brM.get(b)||[])[i]?.s||0),0));
+    rowsM=rowsM.map(r=>({b:r.b,v:r.v.map((x,i)=>{const sv=Math.max(0,(C.brM.get(r.b)||[])[i]?.s||0),w=tS[i]>0?sv/tS[i]:1/(brs.length||1);return x-(shm[i]||0)*w})}))}
+  const totMv=Array.from({length:12},(_,i)=>rowsM.reduce((t,r)=>t+r.v[i],0));
+  const mrows=rowsM.map(r=>`<tr><td>${esc(r.b===SHARED?'مشترك (غير موزع)':r.b)}</td>${r.v.map(v=>`<td class="num">${N(v,0,1)}</td>`).join('')}<td class="num"><b>${N(r.v.reduce((t,x)=>t+x,0),0,1)}</b></td></tr>`).join('');
+  const yrs=[];for(let y=ymd(C.from)[0];y<=ymd(C.to)[0];y++)yrs.push([y,y]);if(!yrs.length)yrs.push([Y,Y]);
+  // expense detail
+  const detMap=new Map();
+  for(const[b,gm]of C.expBr){if(b===SHARED?oneBr:!matchBr(C,b))continue;for(const[g,im]of gm)for(const[it,v]of im){const gg=detMap.get(g)||new Map();gg.set(it,(gg.get(it)||0)+v);detMap.set(g,gg)}}
+  const det=[...detMap.entries()].map(([g,im])=>({g,tot:[...im.values()].reduce((t,x)=>t+x,0),items:[...im.entries()].sort((a,b)=>b[1]-a[1])})).sort((a,b)=>b.tot-a.tot);
+  const detH=det.map(d=>`<tr class="hd"><td>${esc(d.g)}</td><td class="num">${N(d.tot)}</td><td class="num">${pct(d.tot,T.s)}</td></tr>`+d.items.slice(0,15).map(([it,v])=>`<tr><td style="padding-inline-start:22px">${esc(it)}</td><td class="num">${N(v)}</td><td class="num">${pct(v,T.s)}</td></tr>`).join('')).join('');
+  // expense list
+  const brFilter=e=>oneBr?(!isShared(e[1])&&String(e[1]).trim()===u.branch):true;
+  const lst=state.exp.map((e,i)=>({e,i})).filter(x=>x.e[0]!=null&&x.e[0]>=C.from&&x.e[0]<=C.to&&brFilter(x.e)).sort((a,b)=>b.e[0]-a.e[0]||b.i-a.i);
+  const shown=lst.slice(0,u.moreExp||20);
+  const li=shown.map(({e,i})=>`<div class="item" style="gap:3px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-weight:600">${esc(e[2]||e[3])}</b><span>${N(e[4])}</span></div><div class="meta">${D(e[0])} · ${esc(isShared(e[1])?SHARED:e[1])} · ${esc(e[3]||'مصروفات أخرى')}${e[5]?' · '+esc(e[5]):''}</div><div><button class="btn danger" data-act="delexp" data-v="${i}" style="min-height:30px;padding:3px 12px">حذف</button></div></div>`).join('');
+  const brChoices=[...C.branches.filter(b=>!isShared(b)),SHARED];
+  const gOpts=[...new Set([...EXP_GROUPS,...state.exp.map(e=>String(e[3]||'').trim()).filter(Boolean)])];
+  const defD=Math.min(C.to,Math.max(C.from,todaySerial()));
+  const noExp=!state.exp.length;
+  return`<div class="stack">
+    <div class="card"><h2>فترة قائمة الدخل</h2><div class="row"><label>من<input type="date" id="from" data-k="from" data-date value="${toISO(S.from)}"></label>
+      <label>إلى<input type="date" id="to" data-k="to" data-date value="${S.to==null?'':toISO(S.to)}"></label>
+      <label>سنة الشهور${sel('yr',yrs,Y,'year')}</label></div>
+      <p class="note" style="margin:8px 0 0">${S.to==null?'نهاية الفترة فارغة، فتساوي تاريخ التقرير '+toISO(S.rep)+'. ':''}الفرع يُختار من أعلى الصفحة، ويظهر كل فرع في عمود مستقل مع عمود الإجمالي.</p></div>
+    <div class="kpis three"><div class="kpi"><small>مجمل الربح</small><b>${N(T.gp+T.o,0,1)}</b><i>مع الإيرادات الأخرى</i></div><div class="kpi"><small>المصروفات</small><b>${N(T.ex)}</b><i>${pct(T.ex,T.s)} من المبيعات</i></div><div class="kpi big"><small>صافي الربح</small><b>${N(T.net,0,1)}</b><i>هامش ${pct(T.net,T.s)}</i></div></div>
+    <div class="card"><h2>قائمة الدخل</h2><p class="note" style="margin-top:0">من ${D(C.from)} إلى ${D(C.to)}. الأرقام بين الأقواس أو السالبة تُخصم من الربح.</p>
+      ${C.expBr.has(SHARED)&&!oneBr?`<div class="seg" role="group"><button type="button" data-act="set" data-k="alloc" data-v="none" aria-pressed="${!alloc}">المشترك عمود مستقل</button><button type="button" data-act="set" data-k="alloc" data-v="sales" aria-pressed="${alloc}">توزيع المشترك بنسبة المبيعات</button></div>`:''}
+      ${noExp?'<div class="banner" style="margin-top:8px">لم تُدخل مصروفات بعد، فصافي الربح يساوي مجمل الربح مع الإيرادات الأخرى.</div>':''}
+      <div class="tw" style="margin-top:8px"><table class="is"><thead><tr><th>البند</th>${th}</tr></thead><tbody>${rows}</tbody></table></div></div>
+    <div class="card"><h2>صافي الربح الشهري — ${Y}</h2><p class="note" style="margin-top:0">مجمل الربح + الإيرادات الأخرى − المصروفات، لكل شهر (رقم الشهر تحت العمود).</p>${chartBars(totMv)}
+      <div class="tw"><table><thead><tr><th>الفرع</th>${MONTHS.map((m,i)=>`<th class="num">${i+1}<br>${m}</th>`).join('')}<th class="num">الإجمالي</th></tr></thead><tbody>${mrows}</tbody>
+      <tfoot><tr><td>الكل</td>${totMv.map(v=>`<td class="num">${N(v,0,1)}</td>`).join('')}<td class="num">${N(totMv.reduce((t,x)=>t+x,0),0,1)}</td></tr></tfoot></table></div></div>
+    <div class="card"><h2>تفاصيل المصروفات</h2>${det.length?`<div class="tw"><table><thead><tr><th>البند</th><th class="num">المبلغ</th><th class="num">من المبيعات</th></tr></thead><tbody>${detH}</tbody></table></div>`:'<div class="empty">لا توجد مصروفات في الفترة</div>'}</div>
+    <div class="card"><h2>إضافة مصروف</h2>
+      <div class="row"><label>التاريخ<input type="date" id="x_d" value="${toISO(defD)}"></label><label>الفرع<select id="x_b">${brChoices.map(b=>`<option>${esc(b)}</option>`).join('')}</select></label></div>
+      <div class="row" style="margin-top:8px"><label>المجموعة<input type="text" id="x_g" list="x_gl" placeholder="مثل: إيجارات"><datalist id="x_gl">${gOpts.map(g=>`<option value="${esc(g)}">`).join('')}</datalist></label><label>البند<input type="text" id="x_i" placeholder="مثل: إيجار الفرع"></label></div>
+      <div class="row" style="margin-top:8px"><label>المبلغ<input type="number" id="x_a" inputmode="decimal" min="0" step="any"></label><label style="flex:2 1 160px">ملاحظة<input type="text" id="x_n"></label></div>
+      <p class="note" style="margin:8px 0">اختر «${SHARED}» لمصروف لا يخص فرعاً بعينه (إدارة، تسويق عام)، ثم وزّعه على الفروع من أعلى قائمة الدخل إن أردت.</p>
+      <button class="btn primary" data-act="addexp">إضافة</button>
+      <span id="x_m" class="note" style="margin-inline-start:10px"></span>
+      <h2 style="margin-top:16px">مصروفات الفترة (${N(lst.length)})</h2>
+      <div class="list">${li||'<div class="empty">لا توجد مصروفات في الفترة</div>'}</div>
+      ${lst.length>shown.length?`<p style="text-align:center"><button class="btn" data-act="moreexp">عرض المزيد (${N(lst.length-shown.length)})</button></p>`:''}</div></div>`;
+}
+
+
+/* ---------- aging comparison ---------- */
+function viewCompare(C){
+  const u=U(),S=state.s;
+  const B=u.cmpB??S.rep,A=u.cmpA??(B-90);
+  const YGc=yearGroups(Math.max(ymd(A)[0],ymd(B)[0]));
+  const ok=l=>matchBr(C,l.br)&&(u.group==='*'||l.grp===u.group);
+  const la=invAt(C,A,YGc).filter(ok),lb=invAt(C,B,YGc).filter(ok);
+  const sum=(a,f=()=>true)=>a.reduce((t,l)=>f(l)?t+l.val:t,0);
+  const tA=sum(la),tB=sum(lb),rk=(a,r)=>sum(a,l=>l.risk===r);
+  const dl=(x,bad,d=0)=>{const c=Math.abs(x)<0.5?'':((x>0)===!!bad?' neg':' pos');return`<span class="n${c}">${x>0?'+':''}${F(x,d)}</span>`};
+  // delta pill: bad=true means an increase is bad
+  const pill=(x,bad)=>{if(Math.abs(x)<0.5)return'<span class="pill flat">—</span>';return`<span class="pill ${(x>0)===!!bad?'bad':'good'}">${x>0?'▲':'▼'} <span class="n">${F(Math.abs(x))}</span></span>`};
+  const pctChg=(a,b)=>a>0.5?`<span class="n" style="color:var(--muted)">${b>=a?'+':'−'}${(Math.abs(b-a)/a*100).toFixed(0)}%</span>`:'<span style="color:var(--muted)">—</span>';
+  const bl=[`حتى ${S.b1} يوم`,`من ${S.b1+1} إلى ${S.b2} يوم`,`من ${S.b2+1} إلى ${S.b3} يوم`,...YGc.labels.map(l=>`أكثر من ${S.b3} يوم — ${l}`)];
+  const bi=l=>l.band<3?l.band:3+l.yg;
+  const bandRiskOf=i=>i<2?'صحي':i===2?'بداية الخطر':(YGc.starts[i-3]>=ymd(B)[0]-1?'بداية الخطر':'خطر');
+  const bandRows=bl.map((lab,i)=>({lab,a:sum(la,l=>bi(l)===i),b:sum(lb,l=>bi(l)===i),bad:i>=2,risk:bandRiskOf(i)})).filter((x,i)=>i<3||x.a>0||x.b>0);
+  const dot=c=>`<i class="dot" style="background:${c}"></i>`;
+  const share=(v,t)=>t?Math.min(100,v/t*100):0;
+  const bars=(x)=>`<span class="mb"><i style="width:${share(x.a,tA)}%;background:var(--muted);opacity:.55"></i></span><span class="mb"><i style="width:${share(x.b,tB)}%;background:var(--accent)"></i></span>`;
+  const dA=toISO(A),dB=toISO(B);
+  const distHead=(first)=>`<thead><tr class="g"><th rowspan="2" style="text-align:start">${first}</th><th colspan="2" class="gs">${dA}</th><th colspan="2" class="gs">${dB}</th><th colspan="2" class="gs">التغير</th><th rowspan="2" class="gs">النصيب من الإجمالي</th></tr><tr class="s"><th class="gs">القيمة</th><th>%</th><th class="gs">القيمة</th><th>%</th><th class="gs">الفرق</th><th>%</th></tr></thead>`;
+  const distRow=x=>`<tr><td>${dot(RISK_COLOR[x.risk])}${esc(x.lab)}</td><td class="num gs">${N(x.a)}</td><td class="num mu">${PC(tA?x.a/tA:0)}</td><td class="num gs">${N(x.b)}</td><td class="num mu">${PC(tB?x.b/tB:0)}</td><td class="num gs">${pill(x.b-x.a,x.bad)}</td><td class="num">${pctChg(x.a,x.b)}</td><td class="gs" style="min-width:90px">${bars(x)}</td></tr>`;
+  const distFoot=(lab)=>`<tfoot><tr><td>${lab}</td><td class="num gs">${N(tA)}</td><td class="num">${PC(tA?1:0)}</td><td class="num gs">${N(tB)}</td><td class="num">${PC(tB?1:0)}</td><td class="num gs">${pill(tB-tA,false)}</td><td class="num">${pctChg(tA,tB)}</td><td class="gs"></td></tr></tfoot>`;
+  const riskRows=RISK.map(r=>({lab:r,a:rk(la,r),b:rk(lb,r),bad:r!=='صحي',risk:r}));
+  // branches
+  let brT='';
+  if(u.branch==='*'&&C.branches.length>1){
+    const bs=C.branches.map(b=>{const a=la.filter(l=>l.br===b),c=lb.filter(l=>l.br===b);return{b,ta:sum(a),tb:sum(c),da:rk(a,'خطر'),db:rk(c,'خطر')}}).filter(x=>x.ta||x.tb);
+    const T=bs.reduce((t,x)=>({ta:t.ta+x.ta,tb:t.tb+x.tb,da:t.da+x.da,db:t.db+x.db}),{ta:0,tb:0,da:0,db:0});
+    const row=(n,x,f)=>`<tr><td>${n}</td><td class="num gs">${N(x.ta)}</td><td class="num">${N(x.tb)}</td><td class="num">${pill(x.tb-x.ta,false)}</td><td class="num gs">${N(x.da)}</td><td class="num">${N(x.db)}</td><td class="num">${pill(x.db-x.da,true)}</td><td class="num gs">${PC(x.ta?x.da/x.ta:0)}</td><td class="num">${PC(x.tb?x.db/x.tb:0)}</td></tr>`;
+    brT=`<div class="card"><h2>المقارنة حسب الفرع</h2><div class="tw"><table class="ct"><thead><tr class="g"><th rowspan="2" style="text-align:start">الفرع</th><th colspan="3" class="gs">إجمالي المخزون</th><th colspan="3" class="gs">منه خطر (راكد)</th><th colspan="2" class="gs">% الخطر</th></tr><tr class="s"><th class="gs">${dA}</th><th>${dB}</th><th>التغير</th><th class="gs">${dA}</th><th>${dB}</th><th>التغير</th><th class="gs">${dA}</th><th>${dB}</th></tr></thead><tbody>${bs.map(x=>row(esc(x.b),x)).join('')}</tbody><tfoot>${row('الإجمالي',T)}</tfoot></table></div></div>`;
+  }
+  // categories
+  const cm=new Map(),cg=(c)=>{let v=cm.get(c);if(!v){v={c,a:0,b:0,da:0,db:0};cm.set(c,v)}return v};
+  for(const l of la){const v=cg(l.cat);v.a+=l.val;if(l.risk==='خطر')v.da+=l.val}
+  for(const l of lb){const v=cg(l.cat);v.b+=l.val;if(l.risk==='خطر')v.db+=l.val}
+  const cats=[...cm.values()].sort((x,y)=>Math.abs(y.b-y.a)-Math.abs(x.b-x.a)).slice(0,12);
+  const im=new Map(),ig=(l)=>{let v=im.get(l.key);if(!v){v={br:l.br,code:l.code,item:l.item,a:0,b:0};im.set(l.key,v)}return v};
+  for(const l of la)if(l.risk==='خطر')ig(l).a+=l.val;
+  for(const l of lb)if(l.risk==='خطر')ig(l).b+=l.val;
+  const its=[...im.values()].map(x=>({...x,d:x.b-x.a}));
+  const worse=its.filter(x=>x.d>0.5).sort((x,y)=>y.d-x.d).slice(0,10),better=its.filter(x=>x.d<-0.5).sort((x,y)=>x.d-y.d).slice(0,10);
+  const itT=(arr,bad)=>arr.length?`<div class="tw"><table class="ct"><thead><tr class="g"><th style="text-align:start">الصنف</th><th>الفرع</th><th>${dA}</th><th>${dB}</th><th>التغير</th></tr></thead><tbody>${arr.map(x=>`<tr><td style="white-space:normal;min-width:150px">${esc(x.item||x.code)}</td><td>${esc(x.br)}</td><td class="num">${N(x.a)}</td><td class="num">${N(x.b)}</td><td class="num">${pill(x.d,bad)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">لا يوجد</div>';
+  return`<div class="stack">
+    <div class="card"><h2>مقارنة أعمار المخزون بين تاريخين</h2>
+      <div class="row"><label>التاريخ الأول<input type="date" id="cmpA" data-k="cmpA" data-date value="${dA}"></label><label>التاريخ الثاني<input type="date" id="cmpB" data-k="cmpB" data-date value="${dB}"></label>
+      <label>المجموعة${sel('grp',[['*','الكل'],...GROUPS.map(g=>[g,g])],u.group,'group')}</label></div>
+      <p class="note" style="margin:8px 0 0">الفرع يُختار من أعلى الصفحة (أو كل الفروع). المخزون في كل تاريخ يُحسب بالوارد أولاً يصرف أولاً بكل الحركات حتى ذلك التاريخ.</p></div>
+    <div class="kpis three"><div class="kpi"><small>المخزون في ${dA}</small><b>${N(tA)}</b></div><div class="kpi"><small>المخزون في ${dB}</small><b>${N(tB)}</b></div><div class="kpi big"><small>التغير</small><b>${dl(tB-tA,false)}</b><i>${tA?dl((tB-tA)/tA*100,false,1)+'%':'-'}</i></div></div>
+    <div class="kpis three"><div class="kpi"><small style="color:var(--c5)">خطر (قبل)</small><b>${N(rk(la,'خطر'))}</b><i>${PC(tA?rk(la,'خطر')/tA:0)}</i></div><div class="kpi"><small style="color:var(--c5)">خطر (بعد)</small><b>${N(rk(lb,'خطر'))}</b><i>${PC(tB?rk(lb,'خطر')/tB:0)}</i></div><div class="kpi"><small>تغير الخطر</small><b>${dl(rk(lb,'خطر')-rk(la,'خطر'),true)}</b></div></div>
+    <div class="card"><h2>توزيع الأعمار</h2><div class="tw"><table class="ct">${distHead('فئة العمر')}<tbody>${bandRows.map(distRow).join('')}</tbody>${distFoot('الإجمالي')}</table></div>
+      <p class="legend"><span><i class="mb2" style="background:var(--muted);opacity:.55"></i>${dA}</span><span><i class="mb2" style="background:var(--accent)"></i>${dB}</span><span><span class="pill good">▼</span> تغير جيد</span><span><span class="pill bad">▲</span> تغير سيئ</span></p>
+      <p class="note" style="margin:0">الزيادة في الأعمار الأقدم تظهر باللون الأحمر، والزيادة في الأعمار الأحدث تظهر بالأخضر.</p></div>
+    <div class="card"><h2>مستوى الخطورة</h2><div class="tw"><table class="ct">${distHead('المستوى')}<tbody>${riskRows.map(distRow).join('')}</tbody>${distFoot('الإجمالي')}</table></div></div>
+    ${brT}
+    <div class="card"><h2>التصنيفات الأكثر تغيراً</h2><div class="tw"><table class="ct"><thead><tr class="g"><th rowspan="2" style="text-align:start">التصنيف</th><th colspan="3" class="gs">إجمالي المخزون</th><th colspan="2" class="gs">منه خطر</th></tr><tr class="s"><th class="gs">${dA}</th><th>${dB}</th><th>التغير</th><th class="gs">${dA}</th><th>${dB}</th></tr></thead><tbody>${cats.map(x=>`<tr><td style="white-space:normal;min-width:130px">${esc(x.c)}</td><td class="num gs">${N(x.a)}</td><td class="num">${N(x.b)}</td><td class="num">${pill(x.b-x.a,false)}</td><td class="num gs">${N(x.da)}</td><td class="num">${N(x.db)}</td></tr>`).join('')||'<tr><td class="empty" colspan="6">لا توجد بيانات</td></tr>'}</tbody></table></div></div>
+    <div class="card"><h2>أصناف زاد رصيدها الراكد (خطر)</h2>${itT(worse,true)}</div>
+    <div class="card"><h2>أصناف انخفض رصيدها الراكد</h2>${itT(better,false)}</div></div>`;
+}
+
+/* ---------- daily sheet ---------- */
+function viewDaily(C){
+  const u=U(),one=u.branch!=='*',brs=one?[u.branch]:[...C.branches,...(C.expBr.has(SHARED)?[SHARED]:[])];
+  const mvDays=C.rows.filter(r=>r.t>=2&&r.t!==1).map(r=>r.md);
+  const day=u.day??(mvDays.length?Math.max(...mvDays):C.rep);
+  // daily net cash per branch (cash transactions only)
+  const nets=new Map(),add=(b,d,v)=>{let m=nets.get(b);if(!m){m=new Map();nets.set(b,m)}m.set(d,(m.get(d)||0)+v)};
+  for(const r of C.rows){if(!brs.includes(r.br)||r.cr)continue;const v=r.q*r.u;
+    if(r.t===2||r.t===8||r.t===5)add(r.br,r.md,v);else if(r.t===3||r.t===4)add(r.br,r.md,-v)}
+  const payB=e=>isShared(e[1])?SHARED:String(e[1]).trim();
+  for(const e of state.pay){const pk=payKind(e[2]);if(!pk||pk.cls==='open'||e[0]==null||!brs.includes(payB(e)))continue;add(payB(e),e[0],pk.k==='AR'?(Number(e[4])||0):-(Number(e[4])||0))}
+  for(const e of state.exp){const b=isShared(e[1])?SHARED:String(e[1]).trim();if(!brs.includes(b)||e[0]==null)continue;add(b,e[0],-(Number(e[4])||0))}
+  const opening=D0=>brs.reduce((t,b)=>{const c=state.cash[b],a0=c?Number(c.a)||0:0,d0=c&&c.d!=null?c.d:-1e9;if(D0<=d0)return t+a0;let x=a0;for(const[d,v]of(nets.get(b)||[]))if(d>=d0&&d<D0)x+=v;return t+x},0);
+  const open=opening(day);
+  // day items
+  const sales=[],cat=new Map(),pur=new Map(),prn=new Map(),crPur=new Map(),crPrn=new Map();let crS=0;
+  for(const r of C.rows){if(!brs.includes(r.br)||r.md!==day)continue;
+    if(r.t===2||r.t===3||r.t===8){const sg=r.t===3?-1:1,v=sg*r.q*r.u;sales.push({name:(r.item||r.code)+(r.t===3?' (مردود)':'')+(r.cr?' · آجل — '+(r.sup||'عميل'):''),q:sg*r.q,u:r.u,v});const c=r.t===8?'إيرادات أخرى':catOf(r.code);cat.set(c,(cat.get(c)||0)+v);if(r.cr)crS+=v}
+    else if(r.t===4||r.t===5){const doc=String(state.ledger[r.i][3]??'').trim(),m=r.cr?(r.t===4?crPur:crPrn):(r.t===4?pur:prn),k=(r.sup||'مورد')+'\t'+doc;m.set(k,(m.get(k)||0)+r.q*r.u)}}
+  const exs=state.exp.filter(e=>e[0]===day&&brs.includes(isShared(e[1])?SHARED:String(e[1]).trim()));
+  const rcp=[],pys=[];for(const e of state.pay){const pk=payKind(e[2]);if(!pk||pk.cls!=='pay'||e[0]!==day||!brs.includes(payB(e)))continue;(pk.k==='AR'?rcp:pys).push([String(e[3]||'').trim()||'بدون اسم',Number(e[4])||0])}
+  const rev=sales.reduce((t,x)=>t+x.v,0),exT=exs.reduce((t,e)=>t+(Number(e[4])||0),0),puT=[...pur.values()].reduce((t,x)=>t+x,0),prT=[...prn.values()].reduce((t,x)=>t+x,0);
+  const rcT=rcp.reduce((t,x)=>t+x[1],0),pyT=pys.reduce((t,x)=>t+x[1],0);
+  const close=open+rev-crS-exT-puT+prT+rcT-pyT;
+  const lab=k=>{const[s,d]=k.split('\t');return s+(d?' · فاتورة '+d:'')};
+  const catArr=[...cat].sort((a,b)=>b[1]-a[1]);
+  const L=[],pu=(l,v,cls='')=>L.push({l,v,cls});
+  pu('رصيد أول اليوم (خزينة)',open,'sum');pu('إجمالي الإيراد اليومي',rev,'sum');
+  if(Math.abs(crS)>1e-9)pu('يخصم: مبيعات آجلة (على حساب العملاء)',-crS);
+  rcp.forEach(([n,v])=>pu('تحصيل من عميل '+n,v));
+  exs.forEach(e=>pu((e[2]||e[3])+(isShared(e[1])&&!one?' (مشترك)':''),-(Number(e[4])||0)));
+  [...pur].forEach(([k,v])=>pu('مدفوعات مورد '+lab(k)+' - مشتريات بغرض البيع',-v,'pay'));
+  pys.forEach(([n,v])=>pu('سداد للمورد '+n,-v,'pay'));
+  [...prn].forEach(([k,v])=>pu('مردود مشتريات '+lab(k),v));
+  [...crPur].forEach(([k,v])=>pu('مشتريات آجلة من '+lab(k)+' (لا تؤثر على الخزينة)',v,'memo'));
+  [...crPrn].forEach(([k,v])=>pu('مردود مشتريات آجل من '+lab(k)+' (لا يؤثر على الخزينة)',v,'memo'));
+  pu('رصيد آخر اليوم (النقدية المتوفرة)',close,'fin');
+  const R=(a,b,cls='')=>`<tr class="${cls}"><td>${a}</td><td class="num">${b}</td></tr>`;
+  const sumRows=L.map(x=>x.cls==='sum'||x.cls==='fin'?R(esc(x.l),N(x.v),x.cls):x.cls==='memo'?R(esc(x.l),'('+N(x.v)+')','memo'):R(esc(x.l),(x.v<0?'- ':'+ ')+N(Math.abs(x.v)),x.cls)).join('');
+  const salesRows=sales.map((x,i)=>`<tr><td class="num" style="text-align:center">${i+1}</td><td>${esc(x.name)}</td><td class="num" style="text-align:center">${N(x.q,x.q%1?2:0)}</td><td class="num">${N(x.u,2)}</td><td class="num">${N(x.v,2)}</td></tr>`).join('');
+  const cashRows=brs.filter(b=>!(b===SHARED&&brs.length>1&&false)).map((b,i)=>{const c=state.cash[b]||{};return`<div class="row" style="margin-top:8px;align-items:end"><span style="flex:1 1 100%;font-weight:600">${esc(b===SHARED?'مشترك (مصروفات الإدارة)':b)}</span><label>من تاريخ<input type="date" data-cashb="${esc(b)}" data-cf="d" value="${c.d!=null?toISO(c.d):''}"></label><label>رصيد الخزينة أول ذلك اليوم<input type="number" inputmode="decimal" step="any" data-cashb="${esc(b)}" data-cf="a" value="${c.a!=null?c.a:''}"></label></div>`}).join('');
+  window.DAILY={day,branch:one?u.branch:'كل الفروع',open,rev,close,sum:L.map(x=>[x.l,x.v]),sales:sales.map((x,i)=>[i+1,x.name,x.q,x.u,x.v]),cats:catArr};
+  return`<div class="stack">
+    <div class="card noprint"><h2>الورقة اليومية</h2><div class="dd"><button class="btn" data-act="dayshift" data-v="1" aria-label="اليوم التالي">›</button><input type="date" id="dd" data-k="day" data-date value="${toISO(day)}"><button class="btn" data-act="dayshift" data-v="-1" aria-label="اليوم السابق">‹</button></div>
+      <p class="note" style="margin:8px 0 0">اختر الفرع من أعلى الصفحة (أو كل الفروع) والتاريخ. رصيد أول اليوم = رصيد الخزينة المدخل + صافي كل الأيام السابقة تلقائياً. تؤثر على الخزينة المعاملات النقدية فقط (المبيعات والمشتريات ومردوداتها) مع التحصيل من العملاء والسداد للموردين والمصروفات. المعاملات الآجلة تظهر ولا تدخل الخزينة.</p></div>
+    <div class="dtitle">الإيراد اليومي ${toISO(day)}</div><div class="dbr">${esc(one?u.branch:'كل الفروع')}</div>
+    <div class="cmpv">
+      <div class="tw" style="grid-column:1/-1"><table class="dt"><thead><tr><th>الخلاصة</th><th style="width:110px">الإجمالي</th></tr></thead><tbody>${sumRows}</tbody></table></div>
+    </div>
+    <div class="tw"><table class="dt"><thead><tr><th style="width:34px">م</th><th>المنتج</th><th style="width:56px">الكمية</th><th style="width:78px">سعر الوحدة</th><th style="width:86px">الإجمالي</th></tr></thead><tbody>${salesRows||'<tr><td colspan="5" class="empty">لا توجد مبيعات في هذا اليوم</td></tr>'}</tbody>
+      <tfoot><tr class="fin"><td colspan="4" style="text-align:center">إجمالي الإيراد اليومي</td><td class="num">${N(rev,2)}</td></tr></tfoot></table></div>
+    <div class="tw"><table class="dt"><thead><tr><th>التصنيف</th><th style="width:96px">الإجمالي</th><th style="width:60px">%</th></tr></thead><tbody>${catArr.map(([c,v])=>`<tr><td>${esc(c)}</td><td class="num">${N(v,2)}</td><td class="num">${PC(rev?v/rev:0)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">لا توجد إيرادات</td></tr>'}</tbody>
+      <tfoot><tr class="sum"><td>الإجمالي حسب التصنيف</td><td class="num">${N(rev,2)}</td><td></td></tr></tfoot></table></div>
+    <div class="card noprint"><h2>رصيد الخزينة</h2><p class="note" style="margin:0">اكتب رصيد الخزينة في بداية يوم محدد لكل فرع، والبرنامج يرحّل الرصيد يوماً بيوم.</p>${cashRows}</div>
+    <div class="card noprint"><div class="row"><button class="btn" onclick="window.print()">طباعة الورقة</button><button class="btn primary" data-act="xday">تصدير إلى إكسيل</button><span id="xmsg" class="note"></span></div></div></div>`;
+}
+
+
+/* ---------- item ledger (كشف حساب صنف) ---------- */
+function viewLedger(C){
+  const u=U(),S=state.s,q=normTxt(u.lq||'');
+  // code index
+  const idx=new Map();
+  for(const r of state.ledger){const c=String(r[5]??'').trim();if(!c)continue;const e=idx.get(c)||{code:c,name:'',n:0};if(String(r[6]??'').trim())e.name=String(r[6]).trim();e.n++;idx.set(c,e)}
+  const all=[...idx.values()];
+  let matches=[];
+  if(q){const ex=all.filter(e=>normTxt(e.code)===q);
+    matches=ex.length?ex:all.filter(e=>normTxt(e.code+e.name+catOf(e.code)).includes(q));}
+  let sel1=u.lcode&&idx.has(u.lcode)?u.lcode:null;
+  if(q&&matches.length===1)sel1=matches[0].code;
+  if(q&&sel1&&!matches.some(m=>m.code===sel1))sel1=null;
+  const chips=q&&matches.length>1?`<div class="cgrid" style="margin-top:10px">${matches.slice(0,30).map(m=>`<button class="chipbtn" data-act="lsel" data-v="${esc(m.code)}" aria-pressed="${m.code===sel1}"><b>${esc(m.name||m.code)}</b><small>كود ${esc(m.code)} · ${esc(catOf(m.code))}</small></button>`).join('')}</div><p class="note">${matches.length>30?'أول 30 من '+matches.length+' نتيجة. ':''}اختر الصنف المطلوب.</p>`:'';
+  let body='';
+  if(!q)body='<div class="card"><div class="empty">اكتب اسم الصنف أو كوده في الخانة بالأعلى لعرض كشف حسابه.</div></div>';
+  else if(!matches.length)body='<div class="card"><div class="empty">لا يوجد صنف مطابق.</div></div>';
+  else if(!sel1)body='';
+  else{
+    const rows=[];
+    state.ledger.forEach((r,i)=>{
+      if(String(r[5]??'').trim()!==sel1)return;
+      const br=String(r[0]??'').trim();if(u.branch!=='*'&&br!==u.branch)return;
+      const t=opType(r[1]);if(t===null)return;
+      const nq=Number(r[7])||0,pr=Number(r[8])||0;
+      const d=t===1?(r[4]??S.open):r[4];
+      rows.push({i,br,t,op:String(r[1]??'').trim(),d,doc:String(r[3]??'').trim(),sup:String(r[2]??'').trim(),q:nq,u:pr});
+    });
+    const sgn=t=>(t===1||t===3||t===4||t===6)?1:(t===2||t===5||t===7)?-1:0;
+    const byBr=new Map();for(const r of rows){if(!byBr.has(r.br))byBr.set(r.br,[]);byBr.get(r.br).push(r)}
+    const brList=[...byBr.keys()].sort();
+    const nm=idx.get(sel1).name||sel1;
+    const secs=brList.map(b=>{
+      const arr=byBr.get(b).sort((x,y)=>(x.d==null)-(y.d==null)||(x.d-y.d)||(sgn(y.t)-sgn(x.t))||(x.i-y.i));
+      let bal=0,tin=0,tout=0,sQ=0,sV=0,opn=0;
+      const trs=arr.map(r=>{
+        const sg=sgn(r.t),inn=sg>0?r.q:0,out=sg<0?r.q:0;bal+=sg*r.q;if(r.t===1)opn+=inn;else tin+=inn;tout+=out;
+        if(r.t===2){sQ+=r.q;sV+=r.q*r.u}else if(r.t===3){sQ-=r.q;sV-=r.q*r.u}
+        const desc=[r.sup,r.doc&&r.doc!=='0'&&('إذن '+r.doc)].filter(Boolean).join(' · ');
+        return`<tr><td>${r.d==null?'<span class="neg">بلا تاريخ</span>':D(r.d)}</td><td>${esc(r.op)}</td><td style="white-space:normal;min-width:110px">${esc(desc)||'—'}</td><td class="num">${inn?N(inn,inn%1?2:0):''}</td><td class="num">${out?N(out,out%1?2:0):''}</td><td class="num">${N(r.u,2)}</td><td class="num"><b class="${bal<0?'neg':''}">${N(bal,bal%1?2:0)}</b></td></tr>`}).join('');
+      const stock=C.inv.filter(l=>l.br===b&&l.code===sel1),sq=stock.reduce((t,l)=>t+l.q,0),sv=stock.reduce((t,l)=>t+l.val,0);
+      return`<div class="card"><h2>${esc(b||'بدون فرع')}</h2>
+        <div class="kpis three"><div class="kpi"><small>رصيد أول المدة</small><b>${N(opn,opn%1?2:0)}</b></div><div class="kpi"><small>إجمالي الوارد</small><b>${N(tin,tin%1?2:0)}</b></div><div class="kpi"><small>إجمالي المنصرف</small><b>${N(tout,tout%1?2:0)}</b></div></div>
+        <div class="kpis" style="margin-top:8px"><div class="kpi big"><small>الرصيد الحالي بالدفاتر</small><b>${N(bal,bal%1?2:0)}</b></div></div>
+        <p class="note" style="margin:8px 0">صافي المبيعات: ${N(sQ,sQ%1?2:0)} وحدة بقيمة ${N(sV)}. رصيد الوحدة بالوارد أولاً يصرف أولاً بتاريخ ${D(S.rep)}: ${N(sq,sq%1?2:0)} وحدة بقيمة ${N(sv)}.${Math.abs(bal-sq)>1e-6?' <span class="neg">الفرق عن الرصيد بالدفاتر سببه ترتيب التواريخ أو حركات بعد تاريخ التقرير.</span>':''}</p>
+        <div class="tw"><table><thead><tr><th>التاريخ</th><th>العملية</th><th>البيان</th><th class="num">وارد</th><th class="num">منصرف</th><th class="num">السعر / التكلفة</th><th class="num">الرصيد</th></tr></thead><tbody>${trs}</tbody></table></div></div>`}).join('');
+    body=`<div class="card"><h2 style="margin-bottom:2px">${esc(nm)}</h2><div class="meta">كود ${esc(sel1)} · ${esc(catOf(sel1))} · ${N(rows.length)} حركة${u.branch!=='*'?' في فرع '+esc(u.branch):' في '+brList.length+' فرع'}</div></div>${secs||'<div class="card"><div class="empty">لا توجد حركات لهذا الصنف في الفرع المختار.</div></div>'}`;
+  }
+  return`<div class="stack"><div class="card"><h2>كشف حساب صنف</h2>
+    <label>اسم الصنف أو الكود<input type="search" id="lq" placeholder="اكتب جزءاً من الاسم أو الكود" value="${esc(u.lq||'')}"></label>${chips}
+    <p class="note" style="margin:8px 0 0">تظهر كل حركات الصنف مرتبة بالتاريخ، وكل فرع في جدول مستقل مع الرصيد بعد كل حركة. اختر فرعاً من أعلى الصفحة لعرضه وحده.</p></div>${body}</div>`;
+}
+
+
+/* ---------- customers & suppliers (credit accounts) ---------- */
+function viewAccounts(C){
+  const u=U(),S=state.s,kind=u.acck||'AR',isAR=kind==='AR',rep0=S.rep;
+  const evAll=buildAcc(C).filter(e=>e.d<=rep0&&(u.branch==='*'||e.br===u.branch));
+  const pk=x=>normTxt(x);
+  const parties=new Map();
+  for(const e of evAll){const key=pk(e.party),g=parties.get(key)||{name:e.party,AR:{o:0,i:0,r:0,p:0,last:null},AP:{o:0,i:0,r:0,p:0,last:null}};
+    const t=g[e.k];if(e.cls==='open')t.o+=e.a;else if(e.cls==='inv')t.i+=e.a;else if(e.cls==='ret')t.r+=e.a;else t.p+=e.a;
+    if(t.last==null||e.d>t.last)t.last=e.d;parties.set(key,g)}
+  const bal=t=>t.o+t.i+t.r+t.p;
+  const all=[...parties.values()];
+  const totAR=all.reduce((t,g)=>t+bal(g.AR),0),totAP=all.reduce((t,g)=>t+bal(g.AP),0);
+  const qn=pk(u.aq||'');
+  let list=all.filter(g=>g[kind].last!=null&&(!qn||pk(g.name).includes(qn))).map(g=>({name:g.name,...g[kind],b:bal(g[kind])}));
+  list.sort((a,b)=>Math.abs(b.b)-Math.abs(a.b));
+  const T=list.reduce((t,x)=>({o:t.o+x.o,i:t.i+x.i,r:t.r+x.r,p:t.p+x.p,b:t.b+x.b}),{o:0,i:0,r:0,p:0,b:0});
+  const L1=isAR?{inv:'مبيعات آجلة',ret:'مردودات مبيعات',pay:'تحصيلات',party:'العميل',bal:'مستحق على العميل'}:{inv:'مشتريات آجلة',ret:'مردودات مشتريات',pay:'مدفوعات',party:'المورد',bal:'مستحق للمورد'};
+  const rows=list.map(x=>`<tr class="clk" data-act="party" data-v="${esc(pk(x.name))}"><td>${esc(x.name)}</td><td class="num">${x.o?N(x.o):'—'}</td><td class="num">${N(x.i)}</td><td class="num">${x.r?N(x.r,0,1):'—'}</td><td class="num">${x.p?N(x.p,0,1):'—'}</td><td class="num"><b class="${x.b<-0.5?'neg':''}">${N(x.b)}</b></td><td class="num mu">${x.last!=null?D(x.last):''}</td></tr>`).join('');
+  // statement
+  let stm='';const sel1=u.party&&parties.has(u.party)?parties.get(u.party):null;
+  if(sel1){
+    const evs=evAll.filter(e=>pk(e.party)===u.party&&e.k===kind).sort((a,b)=>a.d-b.d||(a.cls==='open'?-1:0)-(b.cls==='open'?-1:0));
+    let run=0;
+    const tr=evs.map(e=>{run+=e.a;return`<tr><td>${D(e.d)}</td><td>${esc(e.type)}</td><td style="white-space:normal;min-width:100px">${esc([e.br,e.doc&&e.doc!=='0'&&('إذن '+e.doc),e.note].filter(Boolean).join(' · '))}</td><td class="num">${e.a>0?N(e.a):''}</td><td class="num">${e.a<0?N(-e.a):''}</td><td class="num"><b class="${run<-0.5?'neg':''}">${N(run)}</b></td></tr>`}).join('');
+    stm=`<div class="card"><h2>كشف حساب ${esc(sel1.name)}</h2><p class="note" style="margin-top:0">حتى تاريخ ${D(rep0)}. الأرقام الموجبة تزيد ${isAR?'المستحق على العميل':'المستحق للمورد'}، والتحصيل أو السداد والمردود يخفضانه.</p>
+      <div class="tw"><table><thead><tr><th>التاريخ</th><th>الحركة</th><th>البيان</th><th class="num">${isAR?'مدين':'دائن'}</th><th class="num">${isAR?'دائن':'مدين'}</th><th class="num">الرصيد</th></tr></thead><tbody>${tr||'<tr><td colspan="6" class="empty">لا توجد حركات</td></tr>'}</tbody></table></div>
+      <p style="margin-bottom:0"><button class="btn" data-act="party" data-v="">إغلاق الكشف</button></p></div>`;
+  }
+  // entries
+  const brChoices=[...C.branches.filter(b=>!isShared(b)),SHARED];
+  const names=[...new Set(all.map(g=>g.name))];
+  const plist=state.pay.map((e,i)=>({e,i})).filter(x=>x.e[0]!=null&&payKind(x.e[2])&&payKind(x.e[2]).k===kind&&(u.branch==='*'||payB2(x.e)===u.branch)).sort((a,b)=>b.e[0]-a.e[0]||b.i-a.i).slice(0,u.morePay||15);
+  const li=plist.map(({e,i})=>`<div class="item" style="gap:3px"><div style="display:flex;justify-content:space-between;gap:8px"><b style="font-weight:600">${esc(e[3])}</b><span>${N(e[4])}</span></div><div class="meta">${D(e[0])} · ${esc(e[2])} · ${esc(isShared(e[1])?SHARED:e[1])}${e[5]?' · '+esc(e[5]):''}</div><div><button class="btn danger" data-act="delpay" data-v="${i}" style="min-height:30px;padding:3px 12px">حذف</button></div></div>`).join('');
+  const noCr=!C.rows.some(r=>r.cr)&&!state.pay.length;
+  return`<div class="stack">
+    <div class="card"><h2>أرصدة العملاء والموردين الآجل</h2>
+      <div class="kpis three" style="margin-top:6px"><div class="kpi"><small>مستحق على العملاء</small><b>${N(totAR)}</b></div><div class="kpi"><small>مستحق للموردين</small><b>${N(totAP)}</b></div><div class="kpi big"><small>الصافي (لنا − علينا)</small><b>${N(totAR-totAP,0,1)}</b></div></div>
+      <p class="note" style="margin:8px 0 0">الأرصدة بتاريخ ${D(rep0)} (تاريخ التقرير) وللفرع المختار من أعلى الصفحة. تدخل المعاملات التي عمود «طريقة الدفع» فيها «آجل» مع التحصيلات والمدفوعات المسجلة.</p>
+      ${noCr?'<div class="banner" style="margin-top:8px">لا توجد معاملات آجلة بعد. اكتب «آجل» في عمود طريقة الدفع لأي عملية، واكتب اسم العميل أو المورد في عمود «المورد / الطرف».</div>':''}</div>
+    <div class="card">${seg('acck',kind,[['AR','العملاء'],['AP','الموردون']])}
+      <div class="row" style="margin-top:10px"><label style="flex:1 1 160px">بحث بالاسم<input type="search" id="aq" placeholder="اسم ${L1.party}" value="${esc(u.aq||'')}"></label></div>
+      <p class="note">${N(list.length)} ${isAR?'عميل':'مورد'}. اضغط على الاسم لعرض كشف حسابه.</p>
+      <div class="tw"><table class="ct"><thead><tr class="g"><th style="text-align:start">${L1.party}</th><th>رصيد أول المدة</th><th>${L1.inv}</th><th>${L1.ret}</th><th>${L1.pay}</th><th>${L1.bal}</th><th>آخر حركة</th></tr></thead><tbody>${rows||'<tr><td colspan="7" class="empty">لا توجد أرصدة</td></tr>'}</tbody>
+      ${rows?`<tfoot><tr><td>الإجمالي</td><td class="num">${N(T.o)}</td><td class="num">${N(T.i)}</td><td class="num">${N(T.r,0,1)}</td><td class="num">${N(T.p,0,1)}</td><td class="num">${N(T.b)}</td><td></td></tr></tfoot>`:''}</table></div></div>
+    ${stm}
+    <div class="card"><h2>تسجيل ${isAR?'تحصيل من عميل':'سداد لمورد'}</h2>
+      <div class="row"><label>التاريخ<input type="date" id="y_d" value="${toISO(Math.min(rep0,todaySerial()))}"></label><label>الفرع<select id="y_b">${brChoices.map(b=>`<option${b===u.branch?' selected':''}>${esc(b)}</option>`).join('')}</select></label></div>
+      <div class="row" style="margin-top:8px"><label>العملية<select id="y_k">${isAR?['تحصيل من عميل','رصيد أول المدة عميل']:['سداد لمورد','رصيد أول المدة مورد']}</select></label><label>${L1.party}<input type="text" id="y_p" list="y_pl" placeholder="اسم ${L1.party}"><datalist id="y_pl">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label></div>
+      <div class="row" style="margin-top:8px"><label>المبلغ<input type="number" id="y_a" inputmode="decimal" min="0" step="any"></label><label style="flex:2 1 160px">ملاحظة<input type="text" id="y_n"></label></div>
+      <p class="note" style="margin:8px 0">التحصيل والسداد يدخلان الخزينة في الورقة اليومية. «رصيد أول المدة» هو رصيد سابق على البيانات ولا يؤثر على الخزينة.</p>
+      <button class="btn primary" data-act="addpay">تسجيل</button><span id="y_m" class="note" style="margin-inline-start:10px"></span>
+      <h2 style="margin-top:16px">آخر التسجيلات</h2><div class="list">${li||'<div class="empty">لا توجد تسجيلات</div>'}</div></div></div>`;
+}
+const payB2=e=>isShared(e[1])?SHARED:String(e[1]).trim();
+
+function viewItems(C){
+  const u=U();
+  const all=C.itemList.filter(x=>matchBr(C,x.br)&&x.cls!==7&&(u.cat==='*'||x.cat===u.cat));
+  const clsStat=[1,2,3,4,5,6].map(k=>{const a=all.filter(x=>x.cls===k);return{k,n:a.length,gp:a.reduce((t,x)=>t+x.gp,0),rv:a.reduce((t,x)=>t+x.remV,0)}});
+  let list;const q=u.q.trim().toLowerCase();
+  if(u.view==='top')list=all.filter(x=>x.s!==0).sort((a,b)=>b.gp-a.gp).slice(0,15);
+  else if(u.view==='bottom')list=all.filter(x=>x.s!==0).sort((a,b)=>a.gp-b.gp).slice(0,15);
+  else if(u.view==='stag')list=all.filter(x=>x.cls===6).sort((a,b)=>b.remV-a.remV).slice(0,30);
+  else{list=all.filter(x=>!u.cls||x.cls===u.cls);const k=u.sort;list.sort((a,b)=>k==='m'?b.m-a.m:k==='s'?b.s-a.s:k==='rv'?b.remV-a.remV:b.gp-a.gp)}
+  if(q)list=list.filter(x=>(x.item+' '+x.code+' '+x.cat).toLowerCase().includes(q));
+  const shown=list.slice(0,u.more);
+  const cards=shown.map(x=>`<div class="item"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${esc(x.item||x.code)}</h3><span class="chip" style="--c:var(--c${x.cls})">${esc(CLS[x.cls-1])}</span></div>
+    <div class="meta">${esc(x.br)} · كود ${esc(x.code)} · ${esc(x.cat)}${x.abc!=='-'?' · فئة '+x.abc:''}</div>
+    <div class="st"><div><span>الكمية المباعة</span><b>${N(x.q,x.q%1?2:0)}</b></div><div><span>المبيعات</span><b>${N(x.s)}</b></div><div><span>مجمل الربح</span><b>${N(x.gp,0,1)}</b></div><div><span>الهامش</span><b>${PC(x.m,1)}</b></div>
+      <div><span>رصيد حالي</span><b>${N(x.remQ,x.remQ%1?2:0)}</b></div><div><span>قيمة الرصيد</span><b>${N(x.remV)}</b></div>${x.oldest!=null?`<div><span>عمر أقدم رصيد</span><b>${N(x.oldest)} يوم</b></div>`:''}${x.cover!=null?`<div><span>تغطية الرصيد</span><b>${N(x.cover)} يوم</b></div>`:''}</div>
+    <div class="dec">${esc(CLS_DEC[x.cls-1])}</div></div>`).join('');
+  const chips=clsStat.map(c=>`<button class="chipbtn" style="--c:var(--c${c.k})" data-act="cls" data-v="${c.k}" aria-pressed="${u.view==='all'&&u.cls===c.k}"><b>${esc(CLS[c.k-1])}</b><small>${N(c.n)} صنف · ربح ${N(c.gp,0,1)} · مخزون ${N(c.rv)}</small></button>`).join('');
+  return`<div class="stack">
+    <div class="card"><h2>ربحية الأصناف لكل فرع</h2><p class="note" style="margin-top:0">الفترة من ${D(C.from)} إلى ${D(C.to)}. الصنف يظهر مرة لكل فرع. اضغط على فئة لتصفية القائمة.</p><div class="cgrid">${chips}</div></div>
+    <div class="card">${seg('view',u.view,[['all','كل الأصناف'],['top','الأفضل 15'],['bottom','الأضعف 15'],['stag','راكد بلا مبيعات']])}
+      ${filterBar(C,true)}<div class="row" style="margin-top:10px">
+      ${u.view==='all'?`<label>ترتيب${sel('srt',[['gp','مجمل الربح'],['m','الهامش'],['s','المبيعات'],['rv','قيمة الرصيد']],u.sort,'sort')}</label>`:''}</div>
+      <p class="note">${N(list.length)} صنف${u.view==='all'&&u.cls?' في فئة «'+CLS[u.cls-1]+'» <button class="btn" data-act="cls" data-v="0" style="min-height:28px;padding:2px 10px">إلغاء</button>':''}</p>
+      <div class="list">${cards||'<div class="empty">لا توجد أصناف مطابقة</div>'}</div>
+      ${list.length>shown.length?`<p style="text-align:center"><button class="btn" data-act="more">عرض المزيد (${N(list.length-shown.length)})</button></p>`:''}</div></div>`;
+}
+
+function viewCats(C){
+  const u=U(),cm=new Map(),Y=C.Y,hi=state.s.hi/100,A=state.s.A/100;
+  const get=(c)=>{let v=cm.get(c);if(!v){v={cat:c,s:0,c:0,rv:0,ms:Array.from({length:12},()=>({s:0,c:0}))};cm.set(c,v)}return v};
+  for(const a of C.caAgg.values())if(matchBr(C,a.br)){const v=get(a.cat);v.s+=a.s;v.c+=a.c}
+  for(const[k,ms]of C.caM){const[b,c]=k.split('\t');if(!matchBr(C,b))continue;const v=get(c);ms.forEach((m,i)=>{v.ms[i].s+=m.s;v.ms[i].c+=m.c})}
+  for(const l of C.inv)if(matchBr(C,l.br))get(l.cat).rv+=l.val;
+  const arr=[...cm.values()].map(v=>({...v,gp:v.s-v.c,m:v.s?(v.s-v.c)/v.s:0})).sort((a,b)=>b.gp-a.gp);
+  const tot=arr.reduce((t,x)=>t+x.gp,0),pos=arr.reduce((t,x)=>t+(x.gp>0?x.gp:0),0);let run=0;
+  for(const x of arr){const before=pos?run/pos:0;if(x.gp>0)run+=x.gp;x.cum=x.gp>0?run/pos:null;
+    x.cls=(!x.s&&!x.c)?(x.rv>0?6:7):x.gp<0?5:x.gp===0?4:before<A?(x.m>=hi?1:2):(x.m>=hi?3:4)}
+  const cq=u.q.trim().toLowerCase();const vis=arr.filter(x=>x.cls!==7&&(u.cat==='*'||x.cat===u.cat)&&(!cq||String(x.cat).toLowerCase().includes(cq)));
+  const cards=vis.map(x=>`<div class="item"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><h3>${esc(x.cat)}</h3><span class="chip" style="--c:var(--c${x.cls})">${esc(CLS[x.cls-1])}</span></div>
+    <div class="st"><div><span>المبيعات</span><b>${N(x.s)}</b></div><div><span>مجمل الربح</span><b>${N(x.gp,0,1)}</b></div><div><span>الهامش</span><b>${PC(x.m,1)}</b></div><div><span>نسبة من الربح</span><b>${PC(tot?x.gp/tot:0)}</b></div><div><span>تراكمي</span><b>${x.cum==null?'-':PC(x.cum)}</b></div><div><span>قيمة المخزون</span><b>${N(x.rv)}</b></div></div>
+    <div class="dec">${esc(CLS_DEC[x.cls-1])}</div></div>`).join('');
+  const met=u.cmetric,val=m=>met==='sales'?m.s:met==='cogs'?m.c:m.s-m.c;
+  const mrows=vis.slice(0,30).map(x=>`<tr><td>${esc(x.cat)}</td>${x.ms.map(m=>`<td class="num">${N(val(m),0,met==='gp')}</td>`).join('')}</tr>`).join('');
+  return`<div class="stack"><div class="card"><h2>ربحية التصنيفات</h2><p class="note" style="margin:0">من ${D(C.from)} إلى ${D(C.to)}، مرتبة من الأكثر إلى الأقل ربحاً. إجمالي مجمل الربح ${N(tot,0,1)}.</p>${filterBar(C,true)}</div>
+    <div class="list">${cards||'<div class="empty">لا توجد بيانات في الفترة</div>'}</div>
+    <div class="card"><h2>الشهور — ${Y}</h2>${seg('cmetric',met,[['gp','مجمل الربح'],['sales','المبيعات'],['cogs','التكلفة']])}
+      <p class="note">أعلى 30 تصنيفاً. الأعمدة هي أرقام الشهور (1 = يناير).</p>
+      <div class="tw"><table><thead><tr><th>التصنيف</th>${MONTHS.map((m,i)=>`<th class="num">${i+1}</th>`).join('')}</tr></thead><tbody>${mrows}</tbody></table></div></div></div>`;
+}
+
+function viewData(C){
+  const u=U(),S=state.s,w=C.warn;
+  const dates=state.ledger.map(r=>r[4]).filter(x=>x!=null),cnt={};C.rows.forEach(r=>cnt[r.t]=(cnt[r.t]||0)+1);
+  const unk=Object.entries(w.unknown),neg=[...C.neg].map(([k,q])=>{const[b,c]=k.split('|');return`${b} · ${C.names.get(k)||c}: ${F(q,2)}`});
+  const uncat=new Set(C.rows.filter(r=>r.t!==8&&!state.codes[r.code]).map(r=>r.code)).size;
+  const num=(k,lab,min,max)=>`<label>${lab}<input type="number" id="s_${k}" data-k="s.${k}" value="${S[k]}" inputmode="decimal"${min!=null?` min="${min}"`:''}${max!=null?` max="${max}"`:''}></label>`;
+  return`<div class="stack">
+    ${state.sample?`<div class="banner"><b>بيانات تجريبية.</b> هذه عينة من ملف 2026 لفرع مدينة نصر لتجربة الشاشات. استورد ملفك ليحل محلها.</div>`:''}
+    ${u.msg?`<div class="banner" style="${u.msg.bad?'':'background:color-mix(in srgb,var(--good) 14%,var(--surface));border-color:color-mix(in srgb,var(--good) 45%,transparent)'}">${esc(u.msg.t)}</div>`:''}
+    <div class="card"><h2>استيراد ملف الإكسيل</h2>
+      <p class="note" style="margin-top:0">الملف بنفس أعمدة ملف 2026: الشهر، الفرع، العملية، المورد، رقم الإذن، التاريخ، الكود، الصنف، الكمية، تكلفة/سعر الوحدة. يمكن استيراد قالب البيانات (ورقات الحركة والاكواد والموردين) أو ملف برنامج الأعمار نفسه.</p>
+      ${seg('mode',u.mode,[['replace','استبدال البيانات'],['append','إضافة للموجود']])}
+      <label class="file" style="margin-top:10px"><input type="file" id="file" accept=".xlsx,.xlsm,.xls,.csv"><b>اختر ملف الإكسيل</b><br><span class="note">تتم القراءة داخل الهاتف ولا يُرفع الملف لأي مكان</span></label></div>
+    <div class="card"><h2>ما تم تحميله</h2><div class="grid2">
+      <div><span class="note">عدد الحركات</span><br><b>${N(C.rows.length)}</b></div><div><span class="note">عدد المصروفات</span><br><b>${N(state.exp.length)}</b></div><div><span class="note">الفروع</span><br><b>${N(C.branches.length)}</b></div>
+      <div><span class="note">أول تاريخ</span><br><b>${dates.length?D(Math.min(...dates)):'-'}</b></div><div><span class="note">آخر تاريخ</span><br><b>${dates.length?D(Math.max(...dates)):'-'}</b></div></div>
+      <div class="tw" style="margin-top:10px"><table><tbody>${Object.keys(OPN).map(k=>`<tr><td>${OPN[k]}</td><td class="num">${N(cnt[k]||0)}</td></tr>`).join('')}</tbody></table></div></div>
+    <div class="card"><h2>فحص جودة البيانات</h2><ul class="warn" style="margin:0;padding-inline-start:18px">
+      ${unk.length?`<li class="neg">عمليات غير معروفة لم تدخل في الحساب: ${unk.map(([n,c])=>esc(n)+' ('+c+')').join('، ')}</li>`:'<li>كل أسماء العمليات معروفة ✓</li>'}
+      ${[...C.branches].filter(b=>!C.ledBr.has(b)).length&&C.ledBr.size?`<li class="neg">فروع في المصروفات بلا حركات: ${[...C.branches].filter(b=>!C.ledBr.has(b)).map(esc).join('، ')}. راجع كتابة الاسم.</li>`:''}
+      ${w.nodate?`<li class="neg">${N(w.nodate)} حركة بلا تاريخ صحيح لم تدخل في الحساب</li>`:'<li>كل الحركات لها تواريخ ✓</li>'}
+      ${w.badq?`<li class="neg">${N(w.badq)} حركة بكمية صفر أو غير صحيحة</li>`:''}
+      ${C.early.size?`<li class="neg">${N(C.early.size)} صنف بيع أو صُرف منه قبل تسجيل الوارد بتاريخه (بيع قبل الشراء أو رصيد أول المدة ناقص). التكلفة تُؤخذ من الوارد اللاحق والمخزون يُخصم منه، فراجع التواريخ.</li>`:''}
+      ${neg.length?`<li class="neg">بيع أو صرف أكثر من الوارد المسجل (رصيد سالب)، والزائد مكلّف بمتوسط تكلفة الوارد. راجع أرصدة أول المدة والمشتريات: ${neg.slice(0,8).map(esc).join('، ')}${neg.length>8?' …':''}</li>`:'<li>لا توجد أرصدة سالبة ✓</li>'}
+      ${uncat?`<li class="neg">${N(uncat)} كود بلا تصنيف في ورقة الاكواد (يظهر «غير مصنف»)</li>`:'<li>كل الأكواد مصنفة ✓</li>'}</ul></div>
+    <div class="card"><h2>الإعدادات</h2><div class="row">
+      <label>تاريخ أرصدة أول المدة<input type="date" id="open" data-k="open" data-date value="${toISO(S.open)}"></label></div>
+      <div class="row" style="margin-top:10px">${num('b1','نهاية الفئة 1 (يوم)',1)}${num('b2','نهاية الفئة 2 (يوم)',1)}${num('b3','نهاية الفئة 3 (يوم)',1)}</div>
+      <div class="row" style="margin-top:10px">${num('hi','هامش مرتفع %',0,100)}${num('lo','هامش منخفض %',0,100)}${num('A','حد الفئة أ %',1,100)}${num('B','حد الفئة ب %',1,100)}</div>
+      <div class="row" style="margin-top:10px"><label style="flex:1 1 220px">سنوات تجميع المخزون الأقدم من الحد الثالث<input type="text" id="s_years" data-k="s.years" value="${esc(S.years)}" inputmode="numeric"></label></div>
+      <p class="note">السنوات تفصل المخزون القديم بعد الحد الثالث: كل سنة في فئة، وما قبل أول سنة يُجمع معاً. أضف السنة الجديدة في آخر القائمة.</p></div>
+    <div class="card"><h2>إدارة البيانات</h2><div class="row"><button class="btn" data-act="sample">تحميل البيانات التجريبية</button><button class="btn danger" data-act="clear">مسح كل البيانات</button></div>
+      <p class="note">تُحفظ البيانات داخل متصفح هذا الهاتف فقط. لو مُسحت بيانات المتصفح أعد استيراد الملف.</p></div></div>`;
+}
+
+/* ---------- shell ---------- */
+const ICON={inv:'<svg viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>',
+  acc:'<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M17 11a3 3 0 1 0 0-6M21 20c0-2.5-1.5-4.6-3.6-5.5"/></svg>',
+  led:'<svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  cmp:'<svg viewBox="0 0 24 24"><path d="M7 4v16M17 4v16M3 8l4-4 4 4M13 16l4 4 4-4"/></svg>',
+  day:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  inc:'<svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h7M9 9h2"/></svg>',
+  profit:'<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg>',
+  items:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+  cats:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  data:'<svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>'};
+const TABS=[['inv','المخزون'],['cmp','مقارنة الأعمار'],['day','اليومية'],['led','كشف صنف'],['acc','العملاء والموردين'],['profit','الربحية'],['inc','قائمة الدخل'],['items','الأصناف'],['cats','التصنيفات'],['data','البيانات']];
+function render(){
+  const ae=document.activeElement,fid=ae&&ae.id,pos=ae&&ae.selectionStart;
+  const C=compute(),u=U();
+  if(u.branch!=='*'&&!C.branches.includes(u.branch))u.branch='*';
+  const body={inv:viewInventory,cmp:viewCompare,day:viewDaily,led:viewLedger,acc:viewAccounts,profit:viewProfit,inc:viewIncome,items:viewItems,cats:viewCats,data:viewData}[u.tab](C);
+  const showBr=u.tab!=='data';
+  document.getElementById('root').innerHTML=`<header class="top"><div class="wrap"><div class="brand"><b>أعمار المخزون والربحية</b><span>${state.sample?'بيانات تجريبية · ':''}الوارد أولاً يصرف أولاً</span></div>
+    ${showBr?`<label style="display:flex;gap:6px;align-items:center;min-width:0">${sel('branch',brOpts(C),u.branch,'branch')}</label>`:''}</div></header>
+    <main class="wrap">${body}</main>
+    <nav class="tabs" aria-label="التقارير"><div>${TABS.map(([k,l])=>`<button data-act="tab" data-v="${k}"${u.tab===k?' aria-current="page"':''}>${ICON[k]}<span>${l}</span></button>`).join('')}</div></nav>`;
+  if(fid){const e=document.getElementById(fid);if(e){e.focus();if(pos!=null&&e.setSelectionRange&&e.type!=='number'&&e.type!=='date'){try{e.setSelectionRange(pos,pos)}catch(x){}}}}
+}
+function touch(){DIRTY=true;save();render()}
+
+/* ---------- events ---------- */
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,v=b.dataset.v,u=U();
+  if(a==='tab'){u.tab=v;u.more=30;u.msg=u.tab==='data'?u.msg:null;render();window.scrollTo(0,0)}
+  else if(a==='set'){const k=b.dataset.k;u[k]=v;u.more=30;render()}
+  else if(a==='more'){u.more+=30;render()}
+  else if(a==='dayshift'){const C=compute(),mv=C.rows.filter(r=>r.t>=2).map(r=>r.md),cur=u.day??(mv.length?Math.max(...mv):C.rep);u.day=cur+Number(v);render()}
+  else if(a==='xday'){exportDaily()}
+  else if(a==='xinv'){exportInv()}
+  else if(a==='catall'){u.catAll=!u.catAll;render()}
+  else if(a==='party'){u.party=v||null;render()}
+  else if(a==='delpay'){state.pay.splice(+v,1);touch()}
+  else if(a==='addpay'){const g=id=>document.getElementById(id),d=toSerial(g('y_d').value),amt=Number(g('y_a').value),nm=g('y_p').value.trim(),m=g('y_m');
+    if(d==null||!(amt>0)||!nm){m.textContent='اكتب التاريخ والاسم والمبلغ';m.style.color='var(--bad)';return}
+    state.pay.push([d,g('y_b').value,g('y_k').value,nm,amt,g('y_n').value.trim()]);touch()}
+  else if(a==='lsel'){u.lcode=v;render()}
+  else if(a==='moreexp'){u.moreExp=(u.moreExp||20)+30;render()}
+  else if(a==='delexp'){state.exp.splice(+v,1);touch()}
+  else if(a==='addexp'){const g=id=>document.getElementById(id),d=toSerial(g('x_d').value),amt=Number(g('x_a').value),m=g('x_m');
+    if(d==null||!(amt>0)){m.textContent='اكتب التاريخ والمبلغ';m.style.color='var(--bad)';return}
+    state.exp.push([d,g('x_b').value,g('x_i').value.trim(),g('x_g').value.trim()||'مصروفات أخرى',amt,g('x_n').value.trim()]);touch()}
+  else if(a==='cls'){u.view='all';u.cls=u.cls===+v?0:+v;u.more=30;render()}
+  else if(a==='clearto'){state.s.to=null;state.s.year=null;touch()}
+  else if(a==='sample'){loadSample();state.s={...DEF};u.msg={t:'تم تحميل البيانات التجريبية.'};touch()}
+  else if(a==='clear'){state.pay=[];state.cash={};state.exp=[];state.ledger=[];state.codes={};state.groups={};state.sample=false;u.msg={t:'تم مسح البيانات. استورد ملفك للبدء.',bad:true};touch()}
+});
+document.addEventListener('change',ev=>{
+  const e=ev.target,k=e.dataset&&e.dataset.k;
+  if(e.id==='file'){if(e.files[0])importFile(e.files[0]);return}
+  if(e.dataset&&e.dataset.cashb!==undefined){const b=e.dataset.cashb,c=state.cash[b]=state.cash[b]||{d:null,a:0};
+    if(e.dataset.cf==='d')c.d=toSerial(e.value);else c.a=Number(e.value)||0;touch();return}
+  if(!k)return;const u=U(),S=state.s;
+  if(k==='branch'||k==='group'||k==='sort'||k==='cat'||k==='isort'){u[k]=e.value;u.more=30;render();return}
+  if(k==='q')return;
+  if(e.dataset.date!==undefined&&(k==='day'||k==='cmpA'||k==='cmpB')){u[k]=toSerial(e.value);render();return}
+  if(e.dataset.date!==undefined){const s=toSerial(e.value);
+    if(k==='to'){S.to=s;S.year=null}else if(k==='from'){S.from=s??DEF.from;S.year=null}else if(k==='rep'){S.rep=s??DEF.rep}else if(k==='open'){S.open=s??DEF.open}
+    touch();return}
+  if(k==='year'){S.year=+e.value;touch();return}
+  if(k.startsWith('s.')){const f=k.slice(2);S[f]=f==='years'?e.value:(Number(e.value)||DEF[f]);touch()}
+});
+let qT;document.addEventListener('input',ev=>{const e=ev.target;if(e.id==='iq'){U().iq=e.value;U().more=30;clearTimeout(qT);qT=setTimeout(render,250)}if(e.id==='aq'){U().aq=e.value;clearTimeout(qT);qT=setTimeout(render,250)}if(e.id==='lq'){U().lq=e.value;U().lcode=null;clearTimeout(qT);qT=setTimeout(render,250)}if(e.id==='q'){U().q=e.value;U().more=30;clearTimeout(qT);qT=setTimeout(render,250)}});
+
+/* ---------- export ---------- */
+function exportInv(){
+  const X=window.INVX,m=document.getElementById('xmsg');
+  const say=(t,bad)=>{if(m){m.textContent=t;m.style.color=bad?'var(--bad)':'var(--good)'}};
+  try{
+    if(typeof XLSX==='undefined')throw new Error('مكتبة الإكسيل غير محملة');
+    const ws=XLSX.utils.aoa_to_sheet(X.rows);ws['!cols']=X.rows[0].map((h,i)=>({wch:i===0?40:14}));ws['!views']=[{RTL:true}];
+    const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'المخزون');
+    XLSX.writeFile(wb,'المخزون_'+X.date+'.xlsx');say('تم إنشاء الملف');
+  }catch(e){say('تعذر التصدير هنا: '+(e.message||e)+'. يعمل في التطبيق المثبّت.',true)}
+}
+function exportDaily(){
+  const D0=window.DAILY,m=document.getElementById('xmsg');
+  const say=(t,bad)=>{if(m){m.textContent=t;m.style.color=bad?'var(--bad)':'var(--good)'}};
+  try{
+    if(typeof XLSX==='undefined')throw new Error('مكتبة الإكسيل غير محملة');
+    const a=[['الإيراد اليومي '+toISO(D0.day)],[D0.branch],[],['الخلاصة','الإجمالي'],...D0.sum,[],['م','المنتج','الكمية','سعر الوحدة','الإجمالي'],...D0.sales,['','إجمالي الإيراد اليومي','','',D0.rev],[],['التصنيف','الإجمالي','%'],...D0.cats.map(([c,v])=>[c,v,D0.rev?v/D0.rev:0]),['الإجمالي حسب التصنيف',D0.rev,'']];
+    const ws=XLSX.utils.aoa_to_sheet(a);ws['!cols']=[{wch:44},{wch:36},{wch:10},{wch:14},{wch:14}];ws['!views']=[{RTL:true}];
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:4}},{s:{r:1,c:0},e:{r:1,c:4}}];
+    const wb=XLSX.utils.book_new();wb.Workbook={Views:[{RTL:true}]};XLSX.utils.book_append_sheet(wb,ws,'اليومية');
+    XLSX.writeFile(wb,'اليومية_'+D0.branch+'_'+toISO(D0.day)+'.xlsx');
+    say('تم إنشاء الملف');
+  }catch(e){say('تعذر التصدير هنا: '+(e.message||e)+'. التصدير يعمل في التطبيق المثبّت على الهاتف.',true)}
+}
+/* ---------- import ---------- */
+function rowsOf(ws){return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:false})}
+async function importFile(file){
+  const u=U();
+  try{
+    if(typeof XLSX==='undefined')throw new Error('تعذر تحميل مكتبة قراءة الإكسيل. تحقق من الاتصال بالإنترنت وأعد المحاولة.');
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+    let led=null,codes=null,groups=null,exps=null,cash=null,pays=null,sheetName='';
+    const names=[...wb.SheetNames].sort((a,b)=>(normTxt(b)==='الحركه')-(normTxt(a)==='الحركه'));
+    for(const n of names){
+      const rs=rowsOf(wb.Sheets[n]);
+      if(!led){
+        const hi=rs.slice(0,12).findIndex(r=>r.some(c=>normTxt(c)==='العمليه')&&r.some(c=>normTxt(c)==='الفرع'));
+        if(hi>=0){const c=rs[hi].findIndex(x=>normTxt(x)==='العمليه');led=[];sheetName=n;const payCol=rs[hi].findIndex(x=>{const z=normTxt(x);return z.includes('الدفع')||z==='نقدياجل'||z==='نقديواجل'});
+          for(const r of rs.slice(hi+1)){const op=r[c];if(op==null||String(op).trim()==='')continue;
+            const br=String(r[c-1]??'').trim(),code=String(r[c+4]??'').trim();if(!br&&!code)continue;
+            led.push([br,String(op).trim(),String(r[c+1]??'').trim(),r[c+2],parseDate(r[c+3]),code,String(r[c+5]??'').trim(),Number(r[c+6])||0,Number(r[c+7])||0,payCol>=0?String(r[payCol]??'').trim():''])}
+          continue}
+      }
+      if(normTxt(n).includes('تحصيل')||normTxt(n).includes('السداد')){
+        const hi=rs.slice(0,12).findIndex(r=>r.some(c=>normTxt(c).includes('مبلغ')));
+        if(hi>=0){pays=pays||[];for(const r of rs.slice(hi+1)){const a=Number(r[4]);if(!a)continue;const d=parseDate(r[0]);if(d==null)continue;pays.push([d,String(r[1]??'').trim()||SHARED,String(r[2]??'').trim(),String(r[3]??'').trim(),a,String(r[5]??'').trim()])}}
+        continue}
+      if(normTxt(n)==='الخزينه'){cash=cash||{};for(const r of rs.slice(1)){const b=String(r[0]??'').trim();if(!b)continue;cash[b]={d:parseDate(r[1]),a:Number(r[2])||0}}continue}
+      if(normTxt(n)==='المصروفات'){
+        const hi=rs.slice(0,12).findIndex(r=>r.some(c=>normTxt(c).includes('مبلغ')||normTxt(c)==='القيمه'));
+        if(hi>=0){const H=rs[hi].map(normTxt),ix=(...ks)=>H.findIndex(h=>ks.some(k=>h.includes(k)));
+          const cD=ix('تاريخ'),cB=ix('فرع'),cI=ix('بند','بيان'),cG=ix('مجموع','تصنيف','نوع'),cA=ix('مبلغ','قيمه'),cN=ix('ملاحظ');
+          exps=[];for(const r of rs.slice(hi+1)){const a=Number(r[cA]);if(!a)continue;const d=parseDate(r[cD]);if(d==null)continue;
+            exps.push([d,String(r[cB]??'').trim()||SHARED,String(r[cI]??'').trim(),String(r[cG]??'').trim()||'مصروفات أخرى',a,cN>=0?String(r[cN]??'').trim():''])}}
+        continue}
+      if(normTxt(n)==='الاكواد'){codes={};for(const r of rs.slice(1)){if(r[0]==null||r[0]==='')continue;codes[String(r[0]).trim()]=String(r[2]??'').trim()||'غير مصنف'}}
+      else if(normTxt(n)==='الموردين'){groups=groups||{};for(const r of rs.slice(1)){const sp=String(r[0]??'').trim(),g=String(r[1]??'').trim();if(sp&&GROUPS.includes(g))groups[sp]=g}}
+      else if(normTxt(n)==='الاعدادات'){groups={};for(const r of rs.slice(4)){const s=String(r[8]??'').trim(),g=String(r[9]??'').trim();if(s&&GROUPS.includes(g))groups[s]=g}}
+    }
+    if(!led&&!codes&&!exps&&!cash&&!pays)throw new Error('لم أجد ورقة حركة بأعمدة «الفرع» و«العملية» ولا ورقة «المصروفات». تأكد أن الصف الأول يحمل عناوين ملف 2026.');
+    if(state.sample&&led){state.ledger=[];state.codes={};state.groups={}}
+    if(state.sample&&(led||exps||pays)){state.exp=[];state.pay=[]}
+    if(cash)state.cash=u.mode==='append'?{...state.cash,...cash}:cash;
+    if(pays)state.pay=u.mode==='append'?state.pay.concat(pays):pays;
+    if(exps)state.exp=u.mode==='append'?state.exp.concat(exps):exps;
+    if(led){state.ledger=u.mode==='append'?state.ledger.concat(led):led;}
+    if(codes)state.codes=u.mode==='append'?{...state.codes,...codes}:codes;
+    if(groups)state.groups=u.mode==='append'?{...state.groups,...groups}:groups;
+    if(led){state.sample=false;const all=state.ledger.map(r=>r[4]).filter(x=>x!=null),op=state.ledger.filter(r=>opType(r[1])!==1).map(r=>r[4]).filter(x=>x!=null),ds=all;if(ds.length){const mx=Math.max(...ds),mn=Math.min(...(op.length?op:all));
+      state.s.open=toSerial(ymd(mn)[0]+'-01-01');state.s.from=state.s.open;state.s.to=null;state.s.year=null;state.s.rep=Math.max(todaySerial(),mx);}}
+    u.msg={t:`تم الاستيراد: ${led?led.length+' حركة من ورقة «'+sheetName+'»':'بدون حركة'}${codes?'، '+Object.keys(codes).length+' كود':''}${groups?'، '+Object.keys(groups).length+' مورد':''}${exps?'، '+exps.length+' مصروف':''}${pays?'، '+pays.length+' تحصيل/سداد':''}. راجع فحص الجودة أدناه.`};
+  }catch(e){u.msg={t:'تعذر الاستيراد: '+(e.message||e),bad:true}}
+  touch();
+}
+
+load();render();
+</script>
+
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
+</body></html>
